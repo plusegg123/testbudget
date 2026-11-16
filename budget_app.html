@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Бюджет</title>
+<style>
+*{box-sizing:border-box;margin:0;-webkit-tap-highlight-color:transparent}
+:root{--bg:#eef1f7;--card:rgba(255,255,255,.72);--text:#15181e;--muted:#5d6575;--accent:#3b82f6;--green:#22c55e;--red:#ef4444;--border:rgba(0,0,0,.06)}
+body.dark{--bg:#0b0e14;--card:rgba(255,255,255,.07);--text:#eef1f7;--muted:#8b93a5;--accent:#60a5fa;--border:rgba(255,255,255,.09)}
+body{font-family:-apple-system,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding-bottom:90px;transition:background .3s,color .3s}
+body::before{content:'';position:fixed;inset:0;z-index:-1;background:radial-gradient(600px 400px at 15% -5%,rgba(59,130,246,.18),transparent),radial-gradient(500px 400px at 90% 10%,rgba(168,85,247,.12),transparent)}
+.card{background:var(--card);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-radius:22px;padding:16px;margin:12px 14px;border:1px solid var(--border);box-shadow:0 8px 30px rgba(0,0,0,.08)}
+h2{font-size:17px;margin-bottom:10px}
+.muted{color:var(--muted);font-size:13px}
+header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px 4px}
+header b{font-size:20px}
+.arr{background:var(--card);border:1px solid var(--border);border-radius:14px;width:38px;height:38px;font-size:18px;color:var(--text)}
+.big{font-size:30px;font-weight:700}
+.big small{font-size:14px;color:var(--muted);font-weight:400}
+.bar{height:8px;background:rgba(120,120,140,.25);border-radius:6px;overflow:hidden;margin-top:6px}
+.bar>div{height:100%;border-radius:6px;background:var(--green);transition:width .4s}
+.bar>div.over{background:var(--red)}
+.row{display:flex;justify-content:space-between;align-items:center;margin-top:10px;font-size:14px}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.chip{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:9px 14px;font-size:14px;color:var(--text)}
+.chip.sel{background:var(--accent);color:#fff;border-color:transparent}
+.btn{display:block;width:100%;background:var(--accent);color:#fff;border:0;border-radius:16px;padding:13px;font-size:15px;font-weight:600;margin-top:12px}
+.btn.ghost{background:transparent;color:var(--text);border:1px solid var(--border)}
+.btn.danger{background:transparent;color:var(--red);border:1px solid var(--border)}
+input,select{width:100%;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:11px 12px;font-size:15px;color:var(--text);margin-top:8px;-webkit-appearance:none}
+.frow{display:flex;gap:8px}.frow>input{margin-top:8px}
+label{font-size:13px;color:var(--muted);display:block;margin-top:10px}
+nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--card);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border-top:1px solid var(--border);padding:8px 6px calc(8px + env(safe-area-inset-bottom))}
+nav button{flex:1;background:none;border:0;color:var(--muted);font-size:11px;padding:6px 0}
+nav button svg{display:block;margin:0 auto 3px;width:24px;height:24px;fill:currentColor}
+nav button.on{color:var(--accent)}
+.seg{display:flex;gap:6px;margin-top:8px}
+.seg button{flex:1;border:1px solid var(--border);background:transparent;color:var(--muted);border-radius:12px;padding:9px;font-size:14px}
+.seg button.on{background:var(--accent);color:#fff;border-color:transparent}
+.li{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);font-size:14px}
+.li:last-child{border:0}
+.li .s{font-weight:600}
+.lim{display:flex;align-items:center;gap:8px;margin-top:10px}
+.lim input{flex:1;margin:0}
+.lim .n{width:150px;flex:0 0 150px}
+section{display:none}section.on{display:block}
+.ok{color:var(--green)}
+</style>
+</head>
+<body>
+<header>
+  <button class="arr" onclick="shift(-1)">‹</button>
+  <div style="text-align:center"><b id="mtitle"></b></div>
+  <button class="arr" onclick="shift(1)">›</button>
+</header>
+
+<section id="t-home" class="on">
+  <div class="card">
+    <div class="muted">Накоплено за месяц</div>
+    <div class="big" id="sav">0 <small>/ 55 500 ₽</small></div>
+    <div class="bar"><div id="savbar" style="width:0%"></div></div>
+    <button class="btn ghost" onclick="addSav()">Отложить в накопления</button>
+  </div>
+  <div class="card">
+    <h2>Быстрая запись</h2>
+    <div class="chips" id="chips"></div>
+    <label>Дата</label><input type="date" id="f-date">
+    <label>Категория</label><select id="f-cat"></select>
+    <div class="frow"><input type="number" inputmode="decimal" id="f-sum" placeholder="Сумма, ₽"><input id="f-note" placeholder="Комментарий"></div>
+    <button class="btn" onclick="addExp()">Добавить трату</button>
+  </div>
+  <div class="card"><h2>Лимиты</h2><div id="limits"></div></div>
+</section>
+
+<section id="t-stats">
+  <div class="card"><h2>Траты за месяц</h2><div id="statlist" class="muted">Пока пусто</div>
+  <div class="row" style="margin-top:14px"><b>Итого:</b><b id="stattotal"></b></div></div>
+</section>
+
+<section id="t-import">
+  <div class="card">
+    <h2>Импорт выписки Сбера</h2>
+    <div class="muted">Скачайте историю на online.sberbank.ru (История → выгрузить, формат CSV), затем загрузите файл сюда. Операции сами разложатся по категориям.</div>
+    <input type="file" id="csvfile" accept=".csv,.txt">
+    <div id="csvres" class="muted" style="margin-top:8px"></div>
+  </div>
+  <div class="card">
+    <h2>Резервная копия</h2>
+    <button class="btn" onclick="dl()">Скачать копию</button>
+    <input type="file" id="bakfile" accept=".json">
+    <button class="btn danger" onclick="wipe()">Удалить все данные</button>
+  </div>
+</section>
+
+<section id="t-set">
+  <div class="card">
+    <h2>Тема</h2>
+    <div class="seg" id="themeSeg">
+      <button data-t="dark" onclick="setTheme('dark')">Тёмная</button>
+      <button data-t="light" onclick="setTheme('light')">Светлая</button>
+      <button data-t="auto" onclick="setTheme('auto')">Авто</button>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Яндекс Диск</h2>
+    <div class="muted">Автосохранение истории в облако (файл /Бюджет/budget_backup.json).</div>
+    <label>ClientID приложения</label><input id="yd-id" onchange="ydSet('id',this.value)">
+    <button class="btn" onclick="ydAuth()">Получить токен</button>
+    <label>Токен (можно вставить вручную)</label><input id="yd-token" onchange="ydSet('token',this.value.trim())">
+    <div class="frow"><button class="btn" style="margin-top:8px" onclick="ydSave()">Сохранить на Диск</button><button class="btn ghost" style="margin-top:8px" onclick="ydLoad()">Восстановить с Диска</button></div>
+    <div id="yd-status" class="muted" style="margin-top:8px"></div>
+  </div>
+  <div class="card">
+    <h2>Цель накоплений</h2>
+    <input type="number" id="goal-in" onchange="setGoal(this.value)">
+  </div>
+</section>
+
+<nav>
+  <button class="on" onclick="tab('home',this)"><svg viewBox="0 0 24 24"><path d="M12 3l9 8h-3v9h-4v-6H10v6H6v-9H3z"/></svg>Главная</button>
+  <button onclick="tab('stats',this)"><svg viewBox="0 0 24 24"><path d="M4 20V10h4v10zm6 0V4h4v16zm6 0v-7h4v7z"/></svg>Статистика</button>
+  <button onclick="tab('import',this)"><svg viewBox="0 0 24 24"><path d="M12 16l-5-5h3V4h4v7h3zM4 18h16v2H4z"/></svg>Импорт</button>
+  <button onclick="tab('set',this)"><svg viewBox="0 0 24 24"><path d="M12 8a4 4 0 100 8 4 4 0 000-8zm9 4l-2.1-.6a7 7 0 00-.8-1.9l1.1-1.9-1.6-1.6-1.9 1.1a7 7 0 00-1.9-.8L13 4h-2l-.6 2.1a7 7 0 00-1.9.8L6.6 5.8 5 7.4l1.1 1.9a7 7 0 00-.8 1.9L3 12v2l2.1.6c.2.7.5 1.3.8 1.9L4.8 18.4l1.6 1.6 1.9-1.1c.6.3 1.2.6 1.9.8L11 22h2l.6-2.1c.7-.2 1.3-.5 1.9-.8l1.9 1.1 1.6-1.6-1.1-1.9c.3-.6.6-1.2.8-1.9L21 14z"/></svg>Настройки</button>
+</nav>
+
+<script>
+const CATS=[["rent","Аренда + ЖКУ",43000],["food","Продукты",18000],["tr","Транспорт",6500],["sub","Связь и подписки",2000],["byt","Быт",7000],["fun","Кафе и развлечения",17000],["child","Ребёнок",10000],["med","Медицина и прочее",6000],["other","Резерв и прочее",5000],["savings","Накопления",55500]];
+const QUICK=["food","fun","tr","byt"];
+const MAP=[["пят,магнит,вкусвилл,лента,дикси,азбук,продукт,перемена,fix","food"],["аптек,клиник,мед,инвитро","med"],["такси,метро,мцд,мцк,ж-д,автобус,билет,транспорт,госуслуги транспорт","tr"],["озон,вайлд,wildberries,алиэкспресс,леруа,строй,золот,чипдип,market","byt"],["дет,кораблик,гортензия,мамино,агуша,нэн,бутик,фабрика пес","child"],["кофе,додо,мак,бургер,ресторан,кафе,кино,пекарня,иволга,столовая,папа","fun"],["жкх,коммунал,мособл,энергосбыт,газ,роствелеком,интернет,мтс,билайн,теле2,мегафон,домру","rent"],["связ,подпис,zen,music,steam,yandex,яндекс плюс","sub"]];
+let S=Object.assign({expenses:[],limits:{},goal:55500,theme:"dark",yd:{},lastSync:0},JSON.parse(localStorage.getItem("budget")||"{}"));
+CATS.forEach(c=>{if(S.limits[c[0]]===undefined)S.limits[c[0]]=c[2]});
+let V=new Date();let quickCat=null;
+const fmt=n=>n.toLocaleString("ru-RU",{maximumFractionDigits:0});
+const mKey=(y,m)=>y+"-"+String(m+1).padStart(2,"0");
+const MON=["январь","февраль","март","апрель","май","июнь","июль","август","сентябрь","октябрь","ноябрь","декабрь"];
+function save(){localStorage.setItem("budget",JSON.stringify(S))}
+function catName(id){const c=CATS.find(c=>c[0]===id);return c?c[1]:"—"}
+function shift(d){V=new Date(V.getFullYear(),V.getMonth()+d,1);render()}
+function meOf(){const k=mKey(V.getFullYear(),V.getMonth());return S.expenses.filter(e=>e.date.startsWith(k))}
+function tab(id,btn){document.querySelectorAll("section").forEach(s=>s.classList.remove("on"));document.getElementById("t-"+id).classList.add("on");document.querySelectorAll("nav button").forEach(b=>b.classList.remove("on"));btn.classList.add("on")}
+function applyTheme(){const d=S.theme==="dark"||(S.theme==="auto"&&matchMedia("(prefers-color-scheme: dark)").matches);document.body.classList.toggle("dark",d);document.querySelectorAll("#themeSeg button").forEach(b=>b.classList.toggle("on",b.dataset.t===S.theme))}
+function setTheme(t){S.theme=t;save();applyTheme()}
+function setGoal(v){S.goal=+v||0;save();render()}
+function render(){
+ document.getElementById("mtitle").textContent=MON[V.getMonth()]+" "+V.getFullYear();
+ const me=meOf();const sav=me.filter(e=>e.cat==="savings").reduce((a,e)=>a+e.sum,0);
+ document.getElementById("sav").innerHTML=fmt(sav)+" <small>/ "+fmt(S.goal)+" ₽</small>";
+ const p=S.goal?Math.min(100,sav/S.goal*100):0;document.getElementById("savbar").style.width=p+"%";
+ document.getElementById("chips").innerHTML=QUICK.map(id=>`<button class="chip ${quickCat===id?"sel":""}" onclick="quickSel('${id}')">${catName(id)}</button>`).join("");
+ document.getElementById("f-cat").innerHTML=CATS.map(c=>`<option value="${c[0]}">${c[1]}</option>`).join("");
+ if(!document.getElementById("f-date").value)document.getElementById("f-date").value=new Date().toISOString().slice(0,10);
+ const spend={};me.filter(e=>e.cat!=="savings").forEach(e=>spend[e.cat]=(spend[e.cat]||0)+e.sum);
+ document.getElementById("limits").innerHTML=CATS.filter(c=>c[0]!=="savings").map(c=>{
+  const s=spend[c[0]]||0,lim=S.limits[c[0]]||1,pc=Math.min(100,s/lim*100);
+  return `<div class="row"><span>${c[1]}</span><span class="${s>lim?"ok":""}" style="color:${s>lim?"var(--red)":"var(--muted)"}">${fmt(s)} / ${fmt(lim)} ₽</span></div><div class="bar"><div class="${s>lim?"over":""}" style="width:${pc}%"></div></div>`}).join("");
+ document.getElementById("statlist").innerHTML=me.length?me.sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id).map(e=>`<div class="li" onclick="editExp(${e.id})"><div><div>${catName(e.cat)}</div><div class="muted">${e.date.slice(8,10)}.${e.date.slice(5,7)} ${e.note||""}</div></div><div class="s">${fmt(e.sum)} ₽</div></div>`).join(""):"Пока пусто";
+ document.getElementById("stattotal").textContent=fmt(me.reduce((a,e)=>a+e.sum,0))+" ₽";
+ document.getElementById("goal-in").value=S.goal;
+ document.getElementById("yd-id").value=S.yd.id||"";
+ document.getElementById("yd-token").value=S.yd.token||"";
+ document.getElementById("yd-status").textContent=S.yd.token?("Подключено. Последнее автосохранение: "+(S.lastSync?new Date(S.lastSync).toLocaleString("ru-RU"):"ещё не было")):"Не подключено";
+ applyTheme();
+}
+function quickSel(id){quickCat=id;document.getElementById("f-cat").value=id;render()}
+function addExp(){const s=+document.getElementById("f-sum").value;if(!s)return alert("Введите сумму");
+ S.expenses.push({id:Date.now(),date:document.getElementById("f-date").value||new Date().toISOString().slice(0,10),cat:document.getElementById("f-cat").value,sum:s,note:document.getElementById("f-note").value.trim()});
+ document.getElementById("f-sum").value="";document.getElementById("f-note").value="";save();render();autosync()}
+function addSav(){const s=prompt("Сколько отложить, ₽?");if(!s)return;S.expenses.push({id:Date.now(),date:new Date().toISOString().slice(0,10),cat:"savings",sum:+s,note:"перевод"});save();render()}
+function editExp(id){const e=S.expenses.find(x=>x.id===id);if(!e)return;
+ const a=prompt("Новая сумма (пусто — не менять):",e.sum);if(a===null)return;if(a!=="")e.sum=+a;
+ const c=prompt("Категория:\n"+CATS.map((c,i)=>(i+1)+". "+c[1]).join("\n")+"\nНомер или пусто — не менять:");if(c){const n=CATS[+c-1];if(n)e.cat=n[0]}
+ if(confirm("Удалить эту трату?")){S.expenses=S.expenses.filter(x=>x.id!==id)}
+ save();render();autosync()}
+function dl(){const b=new Blob([JSON.stringify(S)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="budget_backup.json";a.click()}
+document.getElementById("bakfile").addEventListener("change",ev=>{const f=ev.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{S=Object.assign(JSON.parse(r.result),{yd:S.yd});save();render();alert("Восстановлено!")}catch(e){alert("Файл не распознан")}};r.readAsText(f)});
+
+// --- Импорт выписки Сбера ---
+function parseCSV(t){const L=t.split(/\r?\n/);const h=(L[0]||"").toLowerCase();const sep=(h.split(";").length>h.split(",").length)?";":",";let di=0,ni=2,ai=-1;let rows=L;
+ if(h.includes("дата операции")){const cols=L[0].split(sep);cols.forEach((c,i)=>{c=c.toLowerCase().trim();if(c.includes("дата операции"))di=i;if(c.includes("название"))ni=i;if(c.includes("сумма в валюте операции")||c.includes("сумма платежа"))ai=i});rows=L.slice(1)}
+ const out=[];
+ for(const line of rows){if(!line.trim())continue;const c=line.split(sep);if(c.length<2)continue;const ds=(c[di]||"").trim();if(!/\d{2}\.\d{2}\.\d{4}/.test(ds))continue;
+  let s=c[ai>=0?ai:c.length-1]||"";s=parseFloat(String(s).replace(/\s|\u00a0/g,"").replace(",","."));if(isNaN(s)||s>=0)continue;
+  const name=(c[ni]||"").toLowerCase();let cat="other";
+  for(const [kw,ct] of MAP){if(kw.split(",").some(k=>name.includes(k))){cat=ct;break}}
+  out.push({date:ds.split(" ")[0],cat,sum:Math.abs(s),note:(c[ni]||"").trim().slice(0,60)})}
+ return out}
+document.getElementById("csvfile").addEventListener("change",ev=>{const f=ev.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{const ops=parseCSV(r.result);
+ if(!ops.length){document.getElementById("csvres").textContent="Не нашёл трат в файле. Проверьте формат выгрузки."}
+ else{ops.forEach(o=>S.expenses.push(Object.assign({id:Date.now()+Math.random()},o)));save();render();
+ document.getElementById("csvres").textContent="Загружено операций: "+ops.length+". Переназначить категорию — тап по трате в «Статистике»."}};r.readAsText(f,"windows-1251")});
+
+// --- Яндекс Диск ---
+function ydSet(k,v){S.yd=S.yd||{};S.yd[k]=v;save();render()}
+function ydAuth(){if(!S.yd.id)return alert("Сначала введите ClientID с oauth.yandex.ru");
+ const url="https://oauth.yandex.ru/authorize?response_type=token&client_id="+encodeURIComponent(S.yd.id);
+ window.open(url);alert("После «Разрешить» скопируйте access_token из адресной строки и вставьте в поле «Токен»")}
+function ydPath(){return "/Бюджет/budget_backup.json"}
+async function ydSave(){const t=S.yd.token;if(!t)return alert("Сначала получите токен");
+ try{const r=await fetch("https://cloud-api.yandex.net/v1/disk/resources/upload?path="+encodeURIComponent(ydPath())+"&overwrite=true",{headers:{Authorization:"OAuth "+t}});
+ const j=await r.json();if(!j.href)return alert("Ошибка Диска: "+(j.description||r.status));
+ const u=await fetch(j.href,{method:"PUT",body:JSON.stringify(S)});if(u.ok){S.lastSync=Date.now();save();render();alert("Сохранено на Диск")}else alert("Не удалось загрузить файл: "+u.status)}
+ catch(e){alert("Нет связи с Диском: "+e.message)}}
+async function ydLoad(){const t=S.yd.token;if(!t)return alert("Сначала получите токен");
+ try{const r=await fetch("https://cloud-api.yandex.net/v1/disk/resources/download?path="+encodeURIComponent(ydPath()),{headers:{Authorization:"OAuth "+t}});
+ const j=await r.json();if(!j.href)return alert("Ошибка Диска: "+(j.description||r.status));
+ const f=await fetch(j.href);S=Object.assign(await f.json(),{yd:S.yd});save();render();alert("Восстановлено с Диска!")}
+ catch(e){alert("Нет связи с Диском: "+e.message)}}
+async function autosync(){if(!S.yd.token)return;if(Date.now()-S.lastSync>6*3600*1000){try{await ydSaveSilent()}catch(e){}}}
+async function ydSaveSilent(){const t=S.yd.token;const r=await fetch("https://cloud-api.yandex.net/v1/disk/resources/upload?path="+encodeURIComponent(ydPath())+"&overwrite=true",{headers:{Authorization:"OAuth "+t}});const j=await r.json();if(!j.href)return;const u=await fetch(j.href,{method:"PUT",body:JSON.stringify(S)});if(u.ok){S.lastSync=Date.now();save();render()}}
+function wipe(){if(confirm("Точно удалить ВСЕ данные?")){S.expenses=[];save();render()}}
+
+if(location.hash.includes("access_token")){const m=location.hash.match(/access_token=([^&]+)/);if(m){S.yd=S.yd||{};S.yd.token=m[1];save();history.replaceState(null,"",location.pathname);alert("Токен получен!")}}
+render();autosync();
+</script>
+</body>
+</html>
