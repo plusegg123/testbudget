@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Долги</title>
+<style>
+*{box-sizing:border-box;margin:0;-webkit-tap-highlight-color:transparent}
+html,body{width:100%;overflow-x:hidden}
+:root{--bg:#eef1f7;--card:rgba(255,255,255,.72);--text:#15181e;--muted:#5d6575;--accent:#3b82f6;--green:#22c55e;--red:#ef4444;--warn:#f59e0b;--border:rgba(0,0,0,.06)}
+body.dark{--bg:#0b0e14;--card:rgba(255,255,255,.07);--text:#eef1f7;--muted:#8b93a5;--accent:#60a5fa;--border:rgba(255,255,255,.09)}
+body{font-family:-apple-system,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;max-width:640px;margin:0 auto;padding-bottom:100px;transition:background .3s,color .3s}
+body::before{content:'';position:fixed;inset:0;z-index:-1;background:radial-gradient(600px 400px at 15% -5%,rgba(239,68,68,.14),transparent),radial-gradient(500px 400px at 90% 10%,rgba(59,130,246,.12),transparent)}
+header{padding:16px 18px 6px}
+header b{font-size:22px}
+.card{background:var(--card);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-radius:22px;padding:16px;margin:14px;border:1px solid var(--border);box-shadow:0 8px 30px rgba(0,0,0,.08)}
+h2{font-size:17px;margin-bottom:10px}
+.muted{color:var(--muted);font-size:13px}
+.big{font-size:30px;font-weight:700}
+.big small{font-size:14px;color:var(--muted);font-weight:400}
+.bar{height:8px;background:rgba(120,120,140,.25);border-radius:6px;overflow:hidden;margin-top:6px}
+.bar>div{height:100%;border-radius:6px;background:var(--green);transition:width .4s}
+.row{display:flex;justify-content:space-between;align-items:center;margin-top:10px;font-size:14px}
+.btn{display:block;width:100%;background:var(--accent);color:#fff;border:0;border-radius:16px;padding:13px;font-size:15px;font-weight:600;margin-top:12px}
+.btn.ghost{background:transparent;color:var(--text);border:1px solid var(--border)}
+.btn.danger{background:transparent;color:var(--red);border:1px solid var(--border)}
+.btn.mini{display:inline-block;width:auto;padding:8px 14px;margin:0;font-size:13px}
+input,select{width:100%;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:11px 12px;font-size:15px;color:var(--text);margin-top:8px;-webkit-appearance:none;appearance:none}
+input[type=checkbox]{width:auto;margin:0 0 0 6px;vertical-align:middle}
+.frow{display:flex;gap:8px}.frow>*{margin-top:8px}
+label{font-size:13px;color:var(--muted);display:block;margin-top:10px}
+nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--card);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border-top:1px solid var(--border);padding:8px 6px calc(8px + env(safe-area-inset-bottom));z-index:60}
+nav button{flex:1;background:none;border:0;color:var(--muted);font-size:11px;padding:6px 0}
+nav button svg{display:block;margin:0 auto 3px;width:24px;height:24px;fill:currentColor}
+nav button.on{color:var(--accent)}
+.seg{display:flex;gap:6px;margin-top:8px}
+.seg button{flex:1;border:1px solid var(--border);background:transparent;color:var(--muted);border-radius:12px;padding:9px;font-size:14px}
+.seg button.on{background:var(--accent);color:#fff;border-color:transparent}
+.li{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--border);font-size:14px}
+.li:last-child{border:0}
+.li .s{font-weight:600;white-space:nowrap}
+.li .del{background:none;border:0;color:var(--red);font-size:15px;padding:4px 8px}
+.tag{display:inline-block;font-size:11px;border-radius:8px;padding:2px 8px;margin-top:3px;background:rgba(120,120,140,.15);color:var(--muted)}
+.tag.hot{background:rgba(245,158,11,.18);color:var(--warn)}
+.tag.today{background:rgba(239,68,68,.18);color:var(--red)}
+section{display:none}section.on{display:block}
+canvas#chart{width:100%;height:150px;display:block;margin-top:10px}
+</style>
+</head>
+<body>
+<header><b>💰 Долги</b></header>
+
+<section id="t-home" class="on">
+  <div class="card">
+    <div class="muted">Остаток по всем долгам</div>
+    <div class="big" id="total">—</div>
+    <div class="bar"><div id="totalbar" style="width:0%"></div></div>
+    <div class="row"><span>Выплачено</span><span id="totalpaid"></span></div>
+  </div>
+  <div class="card">
+    <div class="muted">Платежи в месяц</div>
+    <div class="big" id="monthly" style="font-size:24px">—</div>
+    <div class="muted" id="nextline" style="margin-top:6px"></div>
+  </div>
+  <div class="card">
+    <h2>Ближайшие платежи</h2>
+    <div id="upcoming"></div>
+  </div>
+  <div class="card">
+    <h2>Мои долги</h2>
+    <div id="debts"></div>
+    <button class="btn" onclick="showAdd()">+ Добавить долг</button>
+    <div id="addbox" style="display:none">
+      <label>Название (Сбер кредит, рассрочка Ozon…)</label><input id="d-name">
+      <label>Тип</label><select id="d-type">
+        <option value="Кредит">Кредит</option><option value="Рассрочка">Рассрочка</option>
+        <option value="Кредитная карта">Кредитная карта</option><option value="Микрозайм">Микрозайм</option>
+        <option value="Долг человеку">Долг человеку</option><option value="Другое">Другое</option></select>
+      <div class="frow"><input type="number" inputmode="decimal" id="d-total" placeholder="Остаток долга, ₽"><input type="number" inputmode="decimal" id="d-pay" placeholder="Платёж в месяц, ₽"></div>
+      <div class="frow"><input type="number" id="d-day" placeholder="День платежа (1–31)" min="1" max="31"><input type="number" id="d-rate" inputmode="decimal" placeholder="Ставка % (необяз."></div>
+      <button class="btn" onclick="addDebt()">Сохранить</button>
+    </div>
+  </div>
+  <div class="card">
+    <h2>🧮 Калькулятор кредита</h2>
+    <div class="muted">Три числа с первой страницы договора — и увидите платёж, переплату и полную сумму.</div>
+    <label>Сумма кредита, ₽</label><input type="number" inputmode="numeric" id="c-sum">
+    <label>Ставка, % годовых</label><input type="number" inputmode="decimal" id="c-rate" step="0.1">
+    <label>Срок, месяцев</label><input type="number" inputmode="numeric" id="c-term">
+    <div class="seg" id="c-seg">
+      <button class="on" onclick="setCalcType('ann')">Аннуитет</button>
+      <button onclick="setCalcType('diff')">Дифф.</button>
+    </div>
+    <button class="btn" onclick="runCalc()">Рассчитать</button>
+    <div id="c-res"></div>
+    <button class="btn ghost" id="c-add" style="display:none" onclick="calcToDebt()">Добавить как долг</button>
+  </div>
+  <div class="card">
+    <h2>📉 Досрочное погашение</h2>
+    <div class="muted">Доплатите сверх минималки — покажу, сколько сэкономите на процентах и насколько раньше закроете.</div>
+    <label>Долг</label><select id="x-debt"></select>
+    <label>Сумма доплаты, ₽</label><input type="number" inputmode="numeric" id="x-sum">
+    <button class="btn" onclick="extraPay()">Посчитать и внести</button>
+    <div id="x-res" class="muted" style="margin-top:8px"></div>
+  </div>
+  <div class="card">
+    <h2>🧭 С чего начать гасить</h2>
+    <div class="muted">«Снежный ком»: сначала закрываем самые маленькие долги — психологически легче, освобождает платежи. Затем крупные и дорогие.</div>
+    <div id="strategy" style="margin-top:8px"></div>
+  </div>
+</section>
+
+<section id="t-stats">
+  <div class="card">
+    <h2>📈 Платежи по дням (текущий месяц)</h2>
+    <canvas id="chart"></canvas>
+    <div class="muted" id="chart-note" style="margin-top:6px"></div>
+  </div>
+  <div class="card">
+    <h2>История платежей</h2>
+    <div id="hist"></div>
+  </div>
+</section>
+
+<section id="t-set">
+  <div class="card">
+    <h2>Тема</h2>
+    <div class="seg" id="themeSeg">
+      <button data-t="dark" onclick="setTheme('dark')">Тёмная</button>
+      <button data-t="light" onclick="setTheme('light')">Светлая</button>
+      <button data-t="auto" onclick="setTheme('auto')">Авто</button>
+    </div>
+  </div>
+  <div class="card">
+    <h2>🔔 Напоминания о платежах</h2>
+    <label>Напоминать за сколько дней (1–7)</label><input type="number" id="rem-days" min="1" max="7" onchange="remSet('days',this.value)">
+    <div class="row"><span>Напоминание по утрам (9:00)</span><input type="checkbox" id="rem-on" onchange="remSet('on',this.checked)"></div>
+    <button class="btn ghost" onclick="askNotif()">Разрешить уведомления</button>
+    <div class="muted" id="notif-status" style="margin-top:8px"></div>
+    <div class="muted" style="margin-top:6px">Уведомления работают, пока приложение открыто или висит в фоне. Полноценные push при закрытом приложении требуют сервера.</div>
+  </div>
+  <div class="card">
+    <h2>Экспорт и копии</h2>
+    <button class="btn" onclick="expCSV()">⬇ Экспорт истории (CSV)</button>
+    <button class="btn ghost" onclick="dl()">Скачать резервную копию</button>
+    <input type="file" id="bakfile" accept=".json">
+    <button class="btn danger" onclick="wipe()">Удалить все данные</button>
+  </div>
+  <div class="card">
+    <h2>Яндекс Диск</h2>
+    <div class="muted">Автосохранение в файл /Долги/debts_backup.json.</div>
+    <label>ClientID приложения</label><input id="yd-id" onchange="ydSet('id',this.value)">
+    <button class="btn" onclick="ydAuth()">Получить токен</button>
+    <label>Токен (можно вставить вручную)</label><input id="yd-token" onchange="ydSet('token',this.value.trim())">
+    <div class="frow"><button class="btn" onclick="ydSave()">Сохранить на Диск</button><button class="btn ghost" onclick="ydLoad()">Восстановить с Диска</button></div>
+    <div id="yd-status" class="muted" style="margin-top:8px"></div>
+  </div>
+</section>
+
+<nav>
+  <button class="on" onclick="tab('home',this)"><svg viewBox="0 0 24 24"><path d="M12 3l9 8h-3v9h-4v-6H10v6H6v-9H3z"/></svg>Главная</button>
+  <button onclick="tab('stats',this)"><svg viewBox="0 0 24 24"><path d="M4 20V10h4v10zm6 0V4h4v16zm6 0v-7h4v7z"/></svg>История</button>
+  <button onclick="tab('set',this)"><svg viewBox="0 0 24 24"><path d="M12 8a4 4 0 100 8 4 4 0 000-8zm9 4l-2.1-.6a7 7 0 00-.8-1.9l1.1-1.9-1.6-1.6-1.9 1.1a7 7 0 00-1.9-.8L13 4h-2l-.6 2.1a7 7 0 00-1.9.8L6.6 5.8 5 7.4l1.1 1.9a7 7 0 00-.8 1.9L3 12v2l2.1.6c.2.7.5 1.3.8 1.9L4.8 18.4l1.6 1.6 1.9-1.1c.6.3 1.2.6 1.9.8l1.9 1.1 1.6-1.6-1.1-1.9c.3-.6.6-1.2.8-1.9L21 14z"/></svg>Настройки</button>
+</nav>
+
+<script>
+let S=Object.assign({debts:[],history:[],theme:"dark",yd:{},lastSync:0,rem:{on:false,days:3,last:""}},JSON.parse(localStorage.getItem("debts")||"{}"));
+if(!S.rem)S.rem={on:false,days:3,last:""};
+const TYPES={"Кредит":"🏦","Рассрочка":"🧾","Кредитная карта":"💳","Микрозайм":"⚡","Долг человеку":"🤝","Другое":"📦"};
+let V=new Date();
+const fmt=n=>Number(n||0).toLocaleString("ru-RU",{maximumFractionDigits:0});
+const MON=["январь","февраль","март","апрель","май","июнь","июль","август","сентябрь","октябрь","ноябрь","декабрь"];
+const iso=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+const today=()=>iso(new Date());
+function save(){localStorage.setItem("debts",JSON.stringify(S))}
+function left(d){return Math.max(0,(d.total||0)-(d.paid||0))}
+function openDebts(){return S.debts.filter(d=>left(d)>0)}
+function tab(id,btn){document.querySelectorAll("section").forEach(s=>s.classList.remove("on"));document.getElementById("t-"+id).classList.add("on");document.querySelectorAll("nav button").forEach(b=>b.classList.remove("on"));btn.classList.add("on");if(id==="stats")requestAnimationFrame(drawChart)}
+function applyTheme(){const d=S.theme==="dark"||(S.theme==="auto"&&matchMedia("(prefers-color-scheme: dark)").matches);document.body.classList.toggle("dark",d);document.querySelectorAll("#themeSeg button").forEach(b=>b.classList.toggle("on",b.dataset.t===S.theme))}
+function setTheme(t){S.theme=t;save();render()}
+function remSet(k,v){S.rem[k]=v;save();render()}
+function nextDue(d){
+ const now=new Date(),y=now.getFullYear(),m=now.getMonth();
+ const dim=new Date(y,m+1,0).getDate();
+ if(now.getDate()<=Math.min(d.day,dim))return new Date(y,m,Math.min(d.day,dim));
+ const dim2=new Date(y,m+2,0).getDate();
+ return new Date(y,m+1,Math.min(d.day,dim2));
+}
+function diffDays(d){const n=new Date();return Math.ceil((d-new Date(n.getFullYear(),n.getMonth(),n.getDate()))/86400000)}
+function tagFor(days){return days===0?'<span class="tag today">сегодня</span>':days<=S.rem.days?'<span class="tag hot">через '+days+' дн.</span>':'<span class="tag">через '+days+' дн.</span>'}
+function render(){
+ const od=openDebts();
+ const tot=od.reduce((a,d)=>a+left(d),0);
+ const init=S.debts.reduce((a,d)=>a+(d.total||0),0);
+ const paidAll=init-tot;
+ document.getElementById("total").innerHTML=fmt(tot)+" <small>₽ осталось</small>";
+ document.getElementById("totalbar").style.width=(init?Math.min(100,paidAll/init*100):0)+"%";
+ document.getElementById("totalpaid").textContent=fmt(paidAll)+" из "+fmt(init)+" ₽";
+ document.getElementById("monthly").innerHTML=fmt(od.reduce((a,d)=>a+(d.pay||0),0))+" <small>₽/мес</small>";
+ const up=od.map(d=>({d,due:nextDue(d),days:diffDays(nextDue(d))})).sort((a,b)=>a.days-b.days||a.d.pay-b.d.pay);
+ document.getElementById("nextline").textContent=up.length?("Ближайший: "+up[0].d.name+" — "+fmt(up[0].d.pay)+" ₽, "+(up[0].days===0?"сегодня":up[0].days===1?"завтра":"через "+up[0].days+" дн.")):"Все долги закрыты 🎉";
+ document.getElementById("upcoming").innerHTML=up.length?up.slice(0,5).map(u=>`<div class="li"><div><div>${TYPES[u.d.type]||"📦"} ${u.d.name}</div>${tagFor(u.days)}</div><div style="text-align:right"><div class="s">${fmt(u.d.pay)} ₽</div><button class="btn mini" onclick="payOff(${u.d.id})">Оплатил ✓</button></div></div>`).join(""):'<div class="muted">Пока пусто</div>';
+ document.getElementById("debts").innerHTML=S.debts.length?S.debts.map(d=>{
+  const done=left(d)===0;
+  const pc=d.total?Math.min(100,(d.paid||0)/d.total*100):0;
+  return `<div class="li" onclick="editDebt(${d.id})"><div><div>${TYPES[d.type]||"📦"} ${d.name}${done?" ✅":""}</div><div class="muted">${fmt(d.pay||0)} ₽/мес · день ${d.day}${d.rate?" · "+d.rate+"%":""}</div><div class="bar" style="margin-top:4px"><div style="width:${pc}%"></div></div></div><div class="s">${done?"закрыт":fmt(left(d))+" ₽"}</div></div>`}).join(""):'<div class="muted">Добавьте первый долг кнопкой ниже</div>';
+ document.getElementById("strategy").innerHTML=od.length?[...od].sort((a,b)=>left(a)-left(b)).map((d,i)=>`<div class="li"><div>${i+1}. ${d.name}</div><div class="s">${fmt(left(d))} ₽</div></div>`).join(""):'<div class="muted">Долгов нет — гасить нечего 😌</div>';
+ document.getElementById("x-debt").innerHTML=od.length?od.map(d=>`<option value="${d.id}">${TYPES[d.type]||"📦"} ${d.name} — ${fmt(left(d))} ₽</option>`).join(""):'<option value="">Нет открытых долгов</option>';
+ document.getElementById("hist").innerHTML=S.history.length?S.history.slice().sort((a,b)=>b.date.localeCompare(a.date)).slice(0,50).map(h=>{const d=S.debts.find(x=>x.id===h.debtId);return `<div class="li"><div><div>${d?d.name:"долг удалён"}</div><div class="muted">${h.date.slice(8,10)}.${h.date.slice(5,7)}.${h.date.slice(0,4)}</div></div><div class="s" style="color:var(--green)">−${fmt(h.sum)} ₽</div></div>`}).join(""):'<div class="muted">Пока пусто</div>';
+ document.getElementById("rem-days").value=S.rem.days||3;
+ document.getElementById("rem-on").checked=!!S.rem.on;
+ renderNotifStatus();
+ document.getElementById("yd-id").value=S.yd.id||"";
+ document.getElementById("yd-token").value=S.yd.token||"";
+ document.getElementById("yd-status").textContent=S.yd.token?("Подключено. Последнее автосохранение: "+(S.lastSync?new Date(S.lastSync).toLocaleString("ru-RU"):"ещё не было")):"Не подключено";
+ applyTheme();
+}
+function showAdd(){const b=document.getElementById("addbox");b.style.display=b.style.display==="none"?"block":"none"}
+function addDebt(){
+ const n=document.getElementById("d-name").value.trim(),t=document.getElementById("d-type").value;
+ const total=+document.getElementById("d-total").value,pay=+document.getElementById("d-pay").value,day=+document.getElementById("d-day").value,rate=+document.getElementById("d-rate").value||0;
+ if(!n||!total||!day)return alert("Заполните название, остаток и день платежа");
+ S.debts.push({id:Date.now(),name:n,type:t,total,paid:0,pay,day:Math.min(31,Math.max(1,day)),rate});
+ ["d-name","d-total","d-pay","d-day","d-rate"].forEach(i=>document.getElementById(i).value="");
+ document.getElementById("addbox").style.display="none";save();render();autosync()}
+function editDebt(id){const d=S.debts.find(x=>x.id===id);if(!d)return;
+ const a=prompt("Остаток долга сейчас, ₽:",d.total-(d.paid||0));if(a===null)return;if(a!==""){d.total=+a;d.paid=0}
+ const p=prompt("Платёж в месяц, ₽:",d.pay);if(p!==null&&p!=="")d.pay=+p;
+ const day=prompt("День платежа (1–31):",d.day);if(day!==null&&+day)d.day=Math.min(31,Math.max(1,+day));
+ if(confirm("Удалить этот долг полностью?")){S.debts=S.debts.filter(x=>x.id!==id);return}
+ save();render();autosync()}
+function payOff(id){const d=S.debts.find(x=>x.id===id);if(!d)return;
+ const s=prompt("Сумма платежа, ₽:",d.pay||"");if(s===null)return;const sum=+s;if(!sum)return;
+ d.paid=Math.min(d.total,(d.paid||0)+sum);
+ S.history.push({id:Date.now(),date:today(),debtId:id,sum});
+ if(left(d)===0)notify("Долги","Долг «"+d.name+"» закрыт полностью! 🎉");
+ save();render();autosync()}
+// --- Калькулятор кредита ---
+let calcType="ann",lastCalc=null;
+function setCalcType(t){calcType=t;document.querySelectorAll("#c-seg button").forEach(b=>b.classList.toggle("on",(t==="ann")===b.classList.contains("on")))}
+function runCalc(){
+ const sum=+document.getElementById("c-sum").value,rate=+document.getElementById("c-rate").value,n=+document.getElementById("c-term").value;
+ if(!sum||!rate||!n)return alert("Заполните сумму, ставку и срок");
+ const i=rate/100/12;
+ let payTxt,overpay,total,note="";
+ if(calcType==="ann"){
+  const P=sum*i*Math.pow(1+i,n)/(Math.pow(1+i,n)-1);
+  total=P*n;overpay=total-sum;payTxt=fmt(Math.ceil(P))+" ₽ каждый месяц";
+ }else{
+  const pr=sum/n;
+  const first=pr+sum*i,last=pr+pr*i;
+  total=sum+sum*i*(n+1)/2;overpay=total-sum;
+  payTxt=fmt(Math.ceil(first))+" ₽ первый → "+fmt(Math.ceil(last))+" ₽ последний";
+  note="Платёж уменьшается каждый месяц — сначала платите больше, потом меньше.";
+ }
+ lastCalc={sum,rate,term:n,pay:calcType==="ann"?Math.ceil(total/n):Math.ceil(+payTxt.split(" ")[0].replace(/\s/g,"")),type:calcType};
+ if(calcType==="diff")lastCalc.pay=Math.ceil(first);
+ const end=new Date();end.setMonth(end.getMonth()+n);
+ document.getElementById("c-res").innerHTML=`
+ <div class="row"><span>Платёж</span><b>${payTxt}</b></div>
+ <div class="row"><span>Переплата (проценты)</span><b style="color:var(--red)">${fmt(Math.round(overpay))} ₽</b></div>
+ <div class="row"><span>Всего вернёте банку</span><b>${fmt(Math.round(total))} ₽</b></div>
+ <div class="row"><span>Последний платёж</span><b>${MON[end.getMonth()]} ${end.getFullYear()}</b></div>
+ ${note?'<div class="muted" style="margin-top:8px">'+note+'</div>':''}`;
+ document.getElementById("c-add").style.display="block";
+}
+function calcToDebt(){
+ if(!lastCalc)return;
+ const day=prompt("День платежа (1–31):",new Date().getDate());if(!day)return;
+ const name=prompt("Название долга:","Кредит "+fmt(lastCalc.sum)+" ₽");if(!name)return;
+ S.debts.push({id:Date.now(),name:name.trim(),type:"Кредит",total:lastCalc.sum,paid:0,pay:lastCalc.pay,day:Math.min(31,Math.max(1,+day)),rate:lastCalc.rate,n:lastCalc.term});
+ document.getElementById("c-res").innerHTML="";document.getElementById("c-add").style.display="none";
+ save();render();autosync()}
+// --- Досрочное погашение ---
+function schedule(B,i,P){let n=0,it=0;while(B>0.01&&n<1200){const intr=B*i;const pr=P-intr;if(pr<=0)return{n:Infinity,int:Infinity};B-=pr;it+=intr;n++}return{n,int}}
+function extraPay(){
+ const d=S.debts.find(x=>x.id===+document.getElementById("x-debt").value);
+ if(!d)return alert("Сначала добавьте долг");
+ const ex=+document.getElementById("x-sum").value;
+ if(!ex)return alert("Введите сумму доплаты");
+ const B=left(d);
+ if(ex>B)return alert("Доплата больше остатка ("+fmt(B)+" ₽) — уменьшите сумму или используйте «Оплатил ✓»");
+ let msg="Внесено досрочно: "+fmt(ex)+" ₽.";
+ if(d.rate&&d.pay){
+  const i=d.rate/1200;
+  const A=schedule(B,i,d.pay);
+  const C=schedule(B-ex,i,d.pay);
+  if(C.n===Infinity){msg+=" Такой доплаты хватит, чтобы закрыть долг при текущем платеже — отметьте его «Оплатил ✓» на всю сумму."}
+  else if(A.n===Infinity){msg+=" Внимание: текущий платёж не покрывает даже проценты по этой ставке."}
+  else{msg+=" Экономия на процентах: ~"+fmt(Math.round(A.int-C.int))+" ₽. Срок сократится на "+(A.n-C.n)+" мес. (закроете за "+C.n+" мес. вместо "+A.n+" при том же платеже)."}
+ }
+ d.paid=Math.min(d.total,(d.paid||0)+ex);
+ S.history.push({id:Date.now(),date:today(),debtId:d.id,sum:ex});
+ if(left(d)===0)notify("Долги","Долг «"+d.name+"» закрыт полностью! 🎉");
+ document.getElementById("x-sum").value="";
+ document.getElementById("x-res").textContent=msg;
+ save();render();autosync()}
+function drawChart(){
+ const c=document.getElementById("chart");if(!c)return;
+ const spend=new Array(31).fill(0);
+ S.history.filter(h=>h.date.startsWith(iso(new Date()).slice(0,7))).forEach(h=>{const dd=+h.date.slice(8,10);if(dd>=1&&dd<=31)spend[dd-1]+=h.sum});
+ const days=new Date(V.getFullYear(),V.getMonth()+1,0).getDate();
+ const max=Math.max(...spend.slice(0,days),1);
+ const dpr=window.devicePixelRatio||1,w=c.offsetWidth||300,h=150;
+ c.width=w*dpr;c.height=h*dpr;
+ const ctx=c.getContext("2d");ctx.scale(dpr,dpr);ctx.clearRect(0,0,w,h);
+ const css=getComputedStyle(document.body);
+ const acc=css.getPropertyValue("--accent").trim(),dim="rgba(120,120,140,.3)",mut=css.getPropertyValue("--muted").trim();
+ const step=w/days,tday=new Date().getDate();
+ for(let i=0;i<days;i++){
+  const bh=spend[i]/max*(h-26),x=i*step+2,bw=Math.max(2,step-4);
+  ctx.fillStyle=spend[i]>0?(i+1===tday?"#f59e0b":acc):dim;
+  ctx.beginPath();const r=Math.min(4,bw/2);
+  ctx.moveTo(x,h);ctx.lineTo(x,h-bh+r);ctx.quadraticCurveTo(x,h-bh,x+r,h-bh);
+  ctx.lineTo(x+bw-r,h-bh);ctx.quadraticCurveTo(x+bw,h-bh,x+bw,h-bh+r);
+  ctx.lineTo(x+bw,h);ctx.closePath();ctx.fill();
+ }
+ ctx.fillStyle=mut;ctx.font="10px -apple-system,sans-serif";ctx.textAlign="center";
+ [0,4,9,14,19,24,days-1].forEach(i=>ctx.fillText(String(i+1),i*step+step/2,h-4));
+ document.getElementById("chart-note").textContent="За месяц выплачено: "+fmt(spend.reduce((a,b)=>a+b,0))+" ₽";
+}
+// --- Экспорт CSV ---
+function expCSV(){
+ const rows=[["Дата","Долг","Сумма платежа"]];
+ S.history.slice().sort((a,b)=>a.date.localeCompare(b.date)).forEach(h=>{const d=S.debts.find(x=>x.id===h.debtId);rows.push([h.date,d?d.name:"—",h.sum])});
+ const csv="\ufeff"+rows.map(r=>r.join(";")).join("\n");
+ const b=new Blob([csv],{type:"text/csv;charset=utf-8"});const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="debts_export.csv";a.click()}
+// --- Копии ---
+function dl(){const b=new Blob([JSON.stringify(S)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="debts_backup.json";a.click()}
+document.getElementById("bakfile").addEventListener("change",ev=>{const f=ev.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{S=Object.assign(JSON.parse(r.result),{yd:S.yd});save();render();alert("Восстановлено!")}catch(e){alert("Файл не распознан")}};r.readAsText(f)});
+function wipe(){if(confirm("Точно удалить ВСЕ данные?")){S.debts=[];S.history=[];save();render()}}
+// --- Напоминания ---
+function askNotif(){if(!("Notification" in window))return alert("Уведомления не поддерживаются этим браузером");
+ Notification.requestPermission().then(p=>{renderNotifStatus();if(p==="granted")notify("Долги","Уведомления включены — напомню о платежах 🙂")})}
+function notify(t,b){if("Notification" in window&&Notification.permission==="granted"){try{new Notification(t,{body:b})}catch(e){}}}
+function renderNotifStatus(){const el=document.getElementById("notif-status");if(!el)return;
+ el.textContent=("Notification" in window)?(Notification.permission==="granted"?"Уведомления разрешены":Notification.permission==="denied"?"Заблокированы — разрешите в настройках браузера для этого сайта":"Требуется разрешение — нажмите кнопку выше"):"Не поддерживаются этим браузером"}
+function checkNotifs(){
+ if(!S.rem.on)return;
+ const t=today();
+ if(S.rem.last===t)return;
+ const od=openDebts();if(!od.length)return;
+ const soon=od.map(d=>({d,days:diffDays(nextDue(d))})).filter(u=>u.days<=S.rem.days).sort((a,b)=>a.days-b.days);
+ if(soon.length){
+  notify("Долги",soon.map(u=>u.d.name+" — "+(u.days===0?"платёж СЕГОДНЯ":u.days===1?"платёж завтра":"платёж через "+u.days+" дн.")+" ("+fmt(u.d.pay)+" ₽)").join("\n"));
+ }
+ S.rem.last=t;save();
+}
+setInterval(checkNotifs,60000);
+document.addEventListener("visibilitychange",()=>{if(!document.hidden){render();checkNotifs()}});
+// --- Яндекс Диск ---
+function ydSet(k,v){S.yd=S.yd||{};S.yd[k]=v;save();render()}
+function ydAuth(){if(!S.yd.id)return alert("Сначала введите ClientID с oauth.yandex.ru");
+ const url="https://oauth.yandex.ru/authorize?response_type=token&client_id="+encodeURIComponent(S.yd.id);
+ window.open(url);alert("После «Разрешить» скопируйте access_token из адресной строки и вставьте в поле «Токен»")}
+function ydPath(){return "/Долги/debts_backup.json"}
+async function ydSave(){const t=S.yd.token;if(!t)return alert("Сначала получите токен");
+ try{const r=await fetch("https://cloud-api.yandex.net/v1/disk/resources/upload?path="+encodeURIComponent(ydPath())+"&overwrite=true",{headers:{Authorization:"OAuth "+t}});
+ const j=await r.json();if(!j.href)return alert("Ошибка Диска: "+(j.description||r.status));
+ const u=await fetch(j.href,{method:"PUT",body:JSON.stringify(S)});if(u.ok){S.lastSync=Date.now();save();render();alert("Сохранено на Диск")}else alert("Не удалось загрузить файл: "+u.status)}
+ catch(e){alert("Нет связи с Диском: "+e.message)}}
+async function ydLoad(){const t=S.yd.token;if(!t)return alert("Сначала получите токен");
+ try{const r=await fetch("https://cloud-api.yandex.net/v1/disk/resources/download?path="+encodeURIComponent(ydPath()),{headers:{Authorization:"OAuth "+t}});
+ const j=await r.json();if(!j.href)return alert("Ошибка Диска: "+(j.description||r.status));
+ const f=await fetch(j.href);S=Object.assign(await f.json(),{yd:S.yd});save();render();alert("Восстановлено с Диска!")}
+ catch(e){alert("Нет связи с Диском: "+e.message)}}
+async function autosync(){if(!S.yd.token)return;if(Date.now()-S.lastSync>6*3600*1000){try{await ydSaveSilent()}catch(e){}}}
+async function ydSaveSilent(){const t=S.yd.token;const r=await fetch("https://cloud-api.yandex.net/v1/disk/resources/upload?path="+encodeURIComponent(ydPath())+"&overwrite=true",{headers:{Authorization:"OAuth "+t}});const j=await r.json();if(!j.href)return;const u=await fetch(j.href,{method:"PUT",body:JSON.stringify(S)});if(u.ok){S.lastSync=Date.now();save();render()}}
+render();autosync();checkNotifs();
+</script>
+</body>
+</html>
