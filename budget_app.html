@@ -6,6 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Бюджет</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;-webkit-tap-highlight-color:transparent}
 html,body{width:100%;overflow-x:hidden}
@@ -111,8 +112,8 @@ canvas#chart{width:100%;height:150px;display:block;margin-top:10px}
 <section id="t-import">
   <div class="card">
     <h2>Импорт выписки Сбера</h2>
-    <div class="muted">Скачайте историю на online.sberbank.ru (История → выгрузить, формат CSV) и загрузите файл сюда — операции сами разложатся по категориям.</div>
-    <input type="file" id="csvfile" accept=".csv,.txt">
+    <div class="muted">Загрузите выписку в формате XLSX (как в Сбере) или CSV — приложение само разложит операции по категориям.</div>
+    <input type="file" id="csvfile" accept=".csv,.txt,.xlsx,.xls">
     <div id="csvres" class="muted" style="margin-top:8px"></div>
   </div>
   <div class="card">
@@ -177,7 +178,7 @@ canvas#chart{width:100%;height:150px;display:block;margin-top:10px}
   <button class="on" onclick="tab('home',this)"><svg viewBox="0 0 24 24"><path d="M12 3l9 8h-3v9h-4v-6H10v6H6v-9H3z"/></svg>Главная</button>
   <button onclick="tab('stats',this)"><svg viewBox="0 0 24 24"><path d="M4 20V10h4v10zm6 0V4h4v16zm6 0v-7h4v7z"/></svg>Статистика</button>
   <button onclick="tab('import',this)"><svg viewBox="0 0 24 24"><path d="M12 16l-5-5h3V4h4v7h3zM4 18h16v2H4z"/></svg>Импорт</button>
-  <button onclick="tab('set',this)"><svg viewBox="0 0 24 24"><path d="M12 8a4 4 0 100 8 4 4 0 000-8zm9 4l-2.1-.6a7 7 0 00-.8-1.9l1.1-1.9-1.6-1.6-1.9 1.1a7 7 0 00-1.9-.8L13 4h-2l-.6 2.1a7 7 0 00-1.9.8L6.6 5.8 5 7.4l1.1 1.9a7 7 0 00-.8 1.9L3 12v2l2.1.6c.2.7.5 1.3.8 1.9L4.8 18.4l1.6 1.6 1.9-1.1c.6.3 1.2.6 1.9.8L11 22h2l.6-2.1c.7-.2 1.3-.5 1.9-.8l1.9 1.1 1.6-1.6-1.1-1.9c.3-.6.6-1.2.8-1.9L21 14z"/></svg>Настройки</button>
+  <button onclick="tab('set',this)"><svg viewBox="0 0 24 24"><path d="M12 8a4 4 0 100 8 4 4 0 000-8zm9 4l-2.1-.6a7 7 0 00-.8-1.9l1.1-1.9-1.6-1.6-1.9 1.1a7 7 0 00-1.9-.8L13 4h-2l-.6 2.1a7 7 0 00-1.9.8L6.6 5.8 5 7.4l1.1 1.9a7 7 0 00-.8 1.9L3 12v2l2.1.6c.2.7.5 1.3.8 1.9L4.8 18.4l1.6 1.6 1.9-1.1c.6.3 1.2.6 1.9.8l1.9 1.1 1.6-1.6-1.1-1.9c.3-.6.6-1.2.8-1.9L21 14z"/></svg>Настройки</button>
 </nav>
 
 <script>
@@ -185,6 +186,7 @@ const CATS=[["rent","Аренда + ЖКУ","🏠",43000],["food","Продук�
 const BASE_INCOME=170000, BASE_GOAL=55500;
 const QUICK_IDS=["food","fun","tr","byt"];
 const MAP=[["пят,магнит,вкусвилл,лента,дикси,азбук,продукт,перемена,fix","food"],["аптек,клиник,мед,инвитро","med"],["такси,метро,мцд,мцк,ж-д,автобус,билет,транспорт","tr"],["озон,вайлд,wildberries,алиэкспресс,леруа,строй,золот,чипдип,market","byt"],["дет,кораблик,гортензия,мамино,агуша,нэн,бутик,фабрика пес","child"],["кофе,додо,мак,бургер,ресторан,кафе,кино,пекарня,иволга,столовая,папа","fun"],["жкх,коммунал,мособл,энергосбыт,газ,роствелеком,интернет,мтс,билайн,теле2,мегафон,домру","rent"],["связ,подпис,zen,music,steam,yandex,яндекс плюс","sub"]];
+const SBER_MAP=[["супермаркет","food"],["продукт","food"],["аптек","med"],["медиц","med"],["кафе","fun"],["ресторан","fun"],["фастфуд","fun"],["кино","fun"],["такси","tr"],["каршеринг","tr"],["транспорт","tr"],["жкх","rent"],["связ","rent"],["интернет","rent"],["подписк","sub"],["перевод","other"],["госплатеж","other"],["налог","other"],["лотере","other"],["казино","other"],["азартн","other"],["комисси","other"],["одежда","byt"],["обувь","byt"],["маркетплейс","byt"],["дет","child"],["образован","other"]];
 let S=Object.assign({expenses:[],income:0,goal:0,theme:"dark",yd:{},lastSync:0,rem:{on:false,time:"20:00",last:""},pays:[],payNotif:{date:"",ids:[]}},JSON.parse(localStorage.getItem("budget")||"{}"));
 if(!S.rem)S.rem={on:false,time:"20:00",last:""};
 if(!S.pays)S.pays=[];
@@ -316,7 +318,7 @@ function delExp(id){if(!confirm("Удалить эту трату?"))return;S.ex
 function addSav(){const s=prompt("Сколько отложить, ₽?");if(!s)return;S.expenses.push({id:Date.now(),date:new Date().toISOString().slice(0,10),cat:"savings",sum:+s,note:"перевод"});save();render();autosync()}
 function editExp(id){const e=S.expenses.find(x=>x.id===id);if(!e)return;
  const a=prompt("Новая сумма (пусто — не менять):",e.sum);if(a===null)return;if(a!=="")e.sum=+a;
- const c=prompt("Категория:\n"+S.cats.map((c,i)=>(i+1)+". "+c.emoji+" "+c.name).join("\n")+"\nНомер или пусто — не менять:");if(c){const n=S.cats[+c-1];if(n)e.cat=n[0]&&n.id||n.id;if(n)e.cat=n.id}
+ const c=prompt("Категория:\n"+S.cats.map((c,i)=>(i+1)+". "+c.emoji+" "+c.name).join("\n")+"\nНомер или пусто — не менять:");if(c){const n=S.cats[+c-1];if(n)e.cat=n.id}
  save();render();autosync()}
 
 // --- Экспорт CSV ---
@@ -330,20 +332,53 @@ function expCSV(){
 function dl(){const b=new Blob([JSON.stringify(S)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="budget_backup.json";a.click()}
 document.getElementById("bakfile").addEventListener("change",ev=>{const f=ev.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{S=Object.assign(JSON.parse(r.result),{yd:S.yd});if(!S.income)S.income=0;if(!S.goal)S.goal=Math.round(BASE_GOAL/BASE_INCOME*S.income/100)*100;if(!S.cats||!S.cats.length)S.cats=defaultCats(S.income||BASE_INCOME);save();render();alert("Восстановлено!")}catch(e){alert("Файл не распознан")}};r.readAsText(f)});
 
-// --- Импорт выписки Сбера ---
-function parseCSV(t){const L=t.split(/\r?\n/);const h=(L[0]||"").toLowerCase();const sep=(h.split(";").length>h.split(",").length)?";":",";let di=0,ni=2,ai=-1;let rows=L;
- if(h.includes("дата операции")){const cols=L[0].split(sep);cols.forEach((c,i)=>{c=c.toLowerCase().trim();if(c.includes("дата операции"))di=i;if(c.includes("название"))ni=i;if(c.includes("сумма в валюте операции")||c.includes("сумма платежа"))ai=i});rows=L.slice(1)}
+// --- Разбор дат: и «10.11.2026», и «10 нояб. 2026» ---
+function parseDate(ds){
+ let m=(ds||"").match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+ if(m)return m[3]+"-"+m[2].padStart(2,"0")+"-"+m[1].padStart(2,"0");
+ const MN={янв:"01",февр:"02",март:"03",апр:"04",ма:"05",июн:"06",июл:"07",авг:"08",сент:"09",окт:"10",нояб:"11",дек:"12"};
+ m=(ds||"").match(/(\d{1,2})\s+([а-яё]+)\.?\s+(\d{4})/i);
+ if(m){const k=Object.keys(MN).find(k2=>m[2].toLowerCase().startsWith(k2));if(k)return m[3]+"-"+MN[k]+"-"+String(m[1]).padStart(2,"0")}
+ return ""}
+
+// --- Импорт выписки Сбера (CSV и XLSX) ---
+function parseCSV(t){const L=t.split(/\r?\n/);const h=(L[0]||"").toLowerCase();const sep=(h.split(";").length>h.split(",").length)?";":",";const cols=h.split(sep).map(c=>c.trim());
+ const find=n=>cols.findIndex(c=>c.includes(n));
+ let di=find("дата операции");if(di<0)di=find("дата");
+ let ni=find("название");if(ni<0)ni=find("описание");
+ let ai=find("сумма в рублях");if(ai<0)ai=find("сумма в валюте операции");if(ai<0)ai=find("сумма платежа");
+ const ti=find("тип операции");
+ const ci=find("категория");
+ let rows=L;if(di>=0)rows=L.slice(1);
  const out=[];
- for(const line of rows){if(!line.trim())continue;const c=line.split(sep);if(c.length<2)continue;const ds=(c[di]||"").trim();if(!/\d{2}\.\d{2}\.\d{4}/.test(ds))continue;
-  let s=c[ai>=0?ai:c.length-1]||"";s=parseFloat(String(s).replace(/\s|\u00a0/g,"").replace(",","."));if(isNaN(s)||s>=0)continue;
-  const name=(c[ni]||"").toLowerCase();let cat="other";
-  for(const [kw,ct] of MAP){if(kw.split(",").some(k=>name.includes(k))){cat=ct;break}}
-  out.push({date:ds.split(" ")[0],cat:fixCat(cat),sum:Math.abs(s),note:(c[ni]||"").trim().slice(0,60)})}
+ for(const line of rows){if(!line.trim())continue;const c=line.split(sep);if(c.length<2)continue;
+  let s=String(c[ai>=0?ai:c.length-1]||"");s=parseFloat(s.replace(/\s|\u00a0/g,"").replace(",","."));if(isNaN(s))continue;
+  if(ti>=0){if(!((c[ti]||"").toLowerCase().includes("расход")))continue}
+  else if(s>0)continue;
+  s=Math.abs(s);if(!s)continue;
+  const ds=(c[di>=0?di:1]||"").trim();
+  const date=parseDate(ds);if(!date)continue;
+  const name=(c[ni>=0?ni:c.length-1]||"").trim();
+  let cat=null;
+  if(ci>=0){const sb=(c[ci]||"").toLowerCase();
+   for(const [kw,ct] of SBER_MAP){if(sb.includes(kw)){cat=ct;break}}}
+  if(!cat){const nm=name.toLowerCase();cat="other";
+   for(const [kw,ct] of MAP){if(kw.split(",").some(k=>nm.includes(k))){cat=ct;break}}}
+  out.push({date,cat:fixCat(cat),sum:s,note:name.slice(0,60)})}
  return out}
-document.getElementById("csvfile").addEventListener("change",ev=>{const f=ev.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{const ops=parseCSV(r.result);
- if(!ops.length){document.getElementById("csvres").textContent="Не нашёл трат в файле. Проверьте формат выгрузки."}
+document.getElementById("csvfile").addEventListener("change",ev=>{const f=ev.target.files[0];if(!f)return;
+ const done=ops=>{if(!ops||!ops.length){document.getElementById("csvres").textContent="Не нашёл трат в файле. Проверьте формат выгрузки."}
  else{ops.forEach(o=>S.expenses.push(Object.assign({id:Date.now()+Math.random()},o)));save();render();
- document.getElementById("csvres").textContent="Загружено операций: "+ops.length+". Переназначить категорию — тап по трате в «Статистике»."}};r.readAsText(f,"windows-1251")});
+ document.getElementById("csvres").textContent="Загружено операций: "+ops.length+". Переназначить категорию — тап по трате в «Статистике»."}};
+ if(/\.xlsx?$/i.test(f.name)&&window.XLSX){
+  const r=new FileReader();r.onload=()=>{try{
+   const wb=XLSX.read(r.result,{type:"array"});
+   const ws=wb.Sheets[wb.SheetNames[0]];
+   const t=XLSX.utils.sheet_to_csv(ws,{FS:";"});
+   done(parseCSV(t));
+  }catch(e){done([])}};r.readAsArrayBuffer(f);
+ }else{const r=new FileReader();r.onload=()=>done(parseCSV(r.result));r.readAsText(f,"windows-1251")}
+});
 
 // --- Напоминания ---
 function askNotif(){if(!("Notification" in window))return alert("Уведомления не поддерживаются этим браузером");
