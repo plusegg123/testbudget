@@ -8,7 +8,7 @@
 <title>Бюджет</title>
 <style>
 *{box-sizing:border-box;margin:0;-webkit-tap-highlight-color:transparent}
-  html,body{width:100%;overflow-x:hidden}
+html,body{width:100%;overflow-x:hidden}
 body{padding-left:0;padding-right:0}
 .card{margin-left:14px;margin-right:14px}
 nav{left:0;right:0;transform:none;max-width:100%}
@@ -19,7 +19,7 @@ body::before{content:'';position:fixed;inset:0;z-index:-1;background:radial-grad
 header{position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:space-between;padding:14px 18px 10px;background:var(--bg)}
 header b{font-size:20px}
 .arr{background:var(--card);border:1px solid var(--border);border-radius:14px;width:44px;height:44px;font-size:20px;color:var(--text)}
-.card{background:var(--card);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-radius:22px;padding:16px;margin:14px;border:1px solid var(--border);box-shadow:0 8px 30px rgba(0,0,0,.08)}
+.card{background:var(--card);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-radius:22px;padding:16px;border:1px solid var(--border);box-shadow:0 8px 30px rgba(0,0,0,.08)}
 h2{font-size:17px;margin-bottom:10px}
 .muted{color:var(--muted);font-size:13px}
 .big{font-size:30px;font-weight:700}
@@ -38,7 +38,7 @@ input,select{width:100%;background:var(--card);border:1px solid var(--border);bo
 input[type=checkbox]{width:auto;margin:0 0 0 6px;vertical-align:middle}
 .frow{display:flex;gap:8px}.frow>input,.frow>.btn{margin-top:8px}
 label{font-size:13px;color:var(--muted);display:block;margin-top:10px}
-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:640px;display:flex;background:var(--card);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border-top:1px solid var(--border);padding:8px 6px calc(8px + env(safe-area-inset-bottom));z-index:60}
+nav{position:fixed;bottom:0;display:flex;background:var(--card);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border-top:1px solid var(--border);padding:8px 6px calc(8px + env(safe-area-inset-bottom));z-index:60}
 nav button{flex:1;background:none;border:0;color:var(--muted);font-size:11px;padding:6px 0}
 nav button svg{display:block;margin:0 auto 3px;width:24px;height:24px;fill:currentColor}
 nav button.on{color:var(--accent)}
@@ -51,9 +51,20 @@ nav button.on{color:var(--accent)}
 .li .del{background:none;border:0;color:var(--red);font-size:15px;padding:4px 8px}
 section{display:none}section.on{display:block}
 canvas#chart{width:100%;height:150px;display:block;margin-top:10px}
+#onb{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;background:var(--bg);padding:24px}
+#onb.show{display:flex}
 </style>
 </head>
 <body>
+<div id="onb">
+  <div class="card" style="width:100%">
+    <h2>👋 Добро пожаловать!</h2>
+    <div class="muted">Введите ваш доход в месяц — я рассчитаю лимиты по категориям и цель накоплений пропорционально ему (примерно треть — в накопления).</div>
+    <input type="number" inputmode="numeric" id="onb-income" placeholder="Доход в месяц, ₽">
+    <button class="btn" onclick="startApp()">Начать</button>
+  </div>
+</div>
+
 <header>
   <button class="arr" onclick="shift(-1)">‹</button>
   <div style="text-align:center"><b id="mtitle"></b></div>
@@ -75,7 +86,7 @@ canvas#chart{width:100%;height:150px;display:block;margin-top:10px}
     <div class="frow"><input type="number" inputmode="decimal" id="f-sum" placeholder="Сумма, ₽"><input id="f-note" placeholder="Комментарий"></div>
     <button class="btn" onclick="addExp()">Добавить трату</button>
   </div>
-  <div class="card"><h2>Лимиты</h2><div id="limits"></div></div>
+  <div class="card"><h2>Лимиты</h2><div class="muted">Рассчитаны от дохода: <span id="inc-label"></span></div><div id="limits"></div></div>
 </section>
 
 <section id="t-stats">
@@ -115,6 +126,11 @@ canvas#chart{width:100%;height:150px;display:block;margin-top:10px}
 
 <section id="t-set">
   <div class="card">
+    <h2>💰 Доход</h2>
+    <div class="muted">Измените — лимиты и цель накоплений пересчитаются автоматически.</div>
+    <label>Доход в месяц, ₽</label><input type="number" id="inc-in" onchange="setIncome(this.value)">
+  </div>
+  <div class="card">
     <h2>Тема</h2>
     <div class="seg" id="themeSeg">
       <button data-t="dark" onclick="setTheme('dark')">Тёмная</button>
@@ -128,7 +144,7 @@ canvas#chart{width:100%;height:150px;display:block;margin-top:10px}
     <label>Время напоминания</label><input type="time" id="rem-time" onchange="remSet('time',this.value)">
     <button class="btn ghost" onclick="askNotif()">Разрешить уведомления</button>
     <div class="muted" id="notif-status" style="margin-top:8px"></div>
-    <div class="muted" style="margin-top:6px">Уведомления приходят, когда приложение открыто или работает в фоне после сворачивания. Для полноценных push при закрытом приложении нужен свой сервер — пока честный вариант такой.</div>
+    <div class="muted" style="margin-top:6px">Уведомления приходят, когда приложение открыто или работает в фоне. Для push при закрытом приложении нужен свой сервер.</div>
   </div>
   <div class="card">
     <h2>📅 Плановые платежи</h2>
@@ -147,10 +163,6 @@ canvas#chart{width:100%;height:150px;display:block;margin-top:10px}
     <div class="frow"><button class="btn" onclick="ydSave()">Сохранить на Диск</button><button class="btn ghost" onclick="ydLoad()">Восстановить с Диска</button></div>
     <div id="yd-status" class="muted" style="margin-top:8px"></div>
   </div>
-  <div class="card">
-    <h2>Цель накоплений</h2>
-    <input type="number" id="goal-in" onchange="setGoal(this.value)">
-  </div>
 </section>
 
 <nav>
@@ -161,14 +173,14 @@ canvas#chart{width:100%;height:150px;display:block;margin-top:10px}
 </nav>
 
 <script>
-const CATS=[["rent","Аренда + ЖКУ","🏠",43000],["food","Продукты","🛒",18000],["tr","Транспорт","🚌",6500],["sub","Связь и подписки","📱",2000],["byt","Быт и покупки","🧺",7000],["fun","Кафе и развлечения","🍕",17000],["child","Ребёнок","🧸",10000],["med","Медицина","💊",6000],["other","Прочее","📦",5000],["savings","Накопления","💰",55500]];
+const CATS=[["rent","Аренда + ЖКУ","🏠",43000],["food","Продукты","🛒",18000],["tr","Транспорт","🚌",6500],["sub","Связь и подписки","📱",2000],["byt","Быт и покупки","🧺",7000],["fun","Кафе и развлечения","🍕",17000],["child","Ребёнок","🧸",10000],["med","Медицина","💊",6000],["other","Прочее","📦",5000]];
+const BASE_INCOME=170000, BASE_GOAL=55500;
 const QUICK=["food","fun","tr","byt"];
 const MAP=[["пят,магнит,вкусвилл,лента,дикси,азбук,продукт,перемена,fix","food"],["аптек,клиник,мед,инвитро","med"],["такси,метро,мцд,мцк,ж-д,автобус,билет,транспорт","tr"],["озон,вайлд,wildberries,алиэкспресс,леруа,строй,золот,чипдип,market","byt"],["дет,кораблик,гортензия,мамино,агуша,нэн,бутик,фабрика пес","child"],["кофе,додо,мак,бургер,ресторан,кафе,кино,пекарня,иволга,столовая,папа","fun"],["жкх,коммунал,мособл,энергосбыт,газ,роствелеком,интернет,мтс,билайн,теле2,мегафон,домру","rent"],["связ,подпис,zen,music,steam,yandex,яндекс плюс","sub"]];
-let S=Object.assign({expenses:[],limits:{},goal:55500,theme:"dark",yd:{},lastSync:0,rem:{on:false,time:"20:00",last:""},pays:[],payNotif:{date:"",ids:[]}},JSON.parse(localStorage.getItem("budget")||"{}"));
+let S=Object.assign({expenses:[],income:0,goal:0,theme:"dark",yd:{},lastSync:0,rem:{on:false,time:"20:00",last:""},pays:[],payNotif:{date:"",ids:[]}},JSON.parse(localStorage.getItem("budget")||"{}"));
 if(!S.rem)S.rem={on:false,time:"20:00",last:""};
 if(!S.pays)S.pays=[];
 if(!S.payNotif)S.payNotif={date:"",ids:[]};
-CATS.forEach(c=>{if(S.limits[c[0]]===undefined)S.limits[c[0]]=c[3]});
 let V=new Date();let quickCat=null;
 const fmt=n=>Number(n||0).toLocaleString("ru-RU",{maximumFractionDigits:0});
 const mKey=(y,m)=>y+"-"+String(m+1).padStart(2,"0");
@@ -176,6 +188,7 @@ const MON=["январь","февраль","март","апрель","май","�
 function save(){localStorage.setItem("budget",JSON.stringify(S))}
 function catName(id){const c=CATS.find(c=>c[0]===id);return c?c[1]:"—"}
 function catEmoji(id){const c=CATS.find(c=>c[0]===id);return c?c[2]:"•"}
+function scale(v){const inc=S.income||BASE_INCOME;return Math.round(v/BASE_INCOME*inc/100)*100}
 function shift(d){V=new Date(V.getFullYear(),V.getMonth()+d,1);
  const fd=new Date(V.getFullYear(),V.getMonth(),1),ld=new Date(V.getFullYear(),V.getMonth()+1,0);
  document.getElementById("q-from").value=fd.toISOString().slice(0,10);
@@ -185,7 +198,12 @@ function meOf(){const k=mKey(V.getFullYear(),V.getMonth());return S.expenses.fil
 function tab(id,btn){document.querySelectorAll("section").forEach(s=>s.classList.remove("on"));document.getElementById("t-"+id).classList.add("on");document.querySelectorAll("nav button").forEach(b=>b.classList.remove("on"));btn.classList.add("on");if(id==="stats")requestAnimationFrame(drawChart)}
 function applyTheme(){const d=S.theme==="dark"||(S.theme==="auto"&&matchMedia("(prefers-color-scheme: dark)").matches);document.body.classList.toggle("dark",d);document.querySelectorAll("#themeSeg button").forEach(b=>b.classList.toggle("on",b.dataset.t===S.theme))}
 function setTheme(t){S.theme=t;save();render()}
-function setGoal(v){S.goal=+v||0;save();render()}
+function setIncome(v){v=+v;if(!v||v<10000)return alert("Введите доход не меньше 10 000 ₽");
+ S.income=v;S.goal=scale(BASE_GOAL);save();render();autosync()}
+function startApp(){const v=+document.getElementById("onb-income").value;
+ if(!v||v<10000)return alert("Введите доход не меньше 10 000 ₽");
+ S.income=v;S.goal=scale(BASE_GOAL);save();
+ document.getElementById("onb").classList.remove("show");render()}
 function render(){
  document.getElementById("mtitle").textContent=MON[V.getMonth()]+" "+V.getFullYear();
  const me=meOf();const sav=me.filter(e=>e.cat==="savings").reduce((a,e)=>a+e.sum,0);
@@ -195,11 +213,12 @@ function render(){
  document.getElementById("f-cat").innerHTML=CATS.map(c=>`<option value="${c[0]}">${c[2]} ${c[1]}</option>`).join("");
  if(!document.getElementById("f-date").value)document.getElementById("f-date").value=new Date().toISOString().slice(0,10);
  const spend={};me.filter(e=>e.cat!=="savings").forEach(e=>spend[e.cat]=(spend[e.cat]||0)+e.sum);
- document.getElementById("limits").innerHTML=CATS.filter(c=>c[0]!=="savings").map(c=>{
-  const s=spend[c[0]]||0,lim=S.limits[c[0]]||1,pc=Math.min(100,s/lim*100);
+ document.getElementById("inc-label").textContent=fmt(S.income)+" ₽";
+ document.getElementById("limits").innerHTML=CATS.map(c=>{
+  const lim=scale(c[3]),s=spend[c[0]]||0,pc=Math.min(100,s/lim*100);
   return `<div class="row"><span>${c[2]} ${c[1]}</span><span style="color:${s>lim?"var(--red)":"var(--muted)"}">${fmt(s)} / ${fmt(lim)} ₽</span></div><div class="bar"><div class="${s>lim?"over":""}" style="width:${pc}%"></div></div>`}).join("");
  renderStats();
- document.getElementById("goal-in").value=S.goal;
+ document.getElementById("inc-in").value=S.income||"";
  document.getElementById("yd-id").value=S.yd.id||"";
  document.getElementById("yd-token").value=S.yd.token||"";
  document.getElementById("yd-status").textContent=S.yd.token?("Подключено. Последнее автосохранение: "+(S.lastSync?new Date(S.lastSync).toLocaleString("ru-RU"):"ещё не было")):"Не подключено";
@@ -263,7 +282,7 @@ function expCSV(){
 
 // --- Резервная копия ---
 function dl(){const b=new Blob([JSON.stringify(S)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="budget_backup.json";a.click()}
-document.getElementById("bakfile").addEventListener("change",ev=>{const f=ev.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{S=Object.assign(JSON.parse(r.result),{yd:S.yd});save();render();alert("Восстановлено!")}catch(e){alert("Файл не распознан")}};r.readAsText(f)});
+document.getElementById("bakfile").addEventListener("change",ev=>{const f=ev.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{S=Object.assign(JSON.parse(r.result),{yd:S.yd});if(!S.income)S.income=0;if(!S.goal)S.goal=scale(BASE_GOAL);save();render();alert("Восстановлено!")}catch(e){alert("Файл не распознан")}};r.readAsText(f)});
 
 // --- Импорт выписки Сбера ---
 function parseCSV(t){const L=t.split(/\r?\n/);const h=(L[0]||"").toLowerCase();const sep=(h.split(";").length>h.split(",").length)?";":",";let di=0,ni=2,ai=-1;let rows=L;
@@ -329,13 +348,16 @@ async function ydSave(){const t=S.yd.token;if(!t)return alert("Сначала п
 async function ydLoad(){const t=S.yd.token;if(!t)return alert("Сначала получите токен");
  try{const r=await fetch("https://cloud-api.yandex.net/v1/disk/resources/download?path="+encodeURIComponent(ydPath()),{headers:{Authorization:"OAuth "+t}});
  const j=await r.json();if(!j.href)return alert("Ошибка Диска: "+(j.description||r.status));
- const f=await fetch(j.href);S=Object.assign(await f.json(),{yd:S.yd});save();render();alert("Восстановлено с Диска!")}
+ const f=await fetch(j.href);S=Object.assign(await f.json(),{yd:S.yd});if(!S.income)S.income=0;if(!S.goal)S.goal=scale(BASE_GOAL);save();render();alert("Восстановлено с Диска!")}
  catch(e){alert("Нет связи с Диском: "+e.message)}}
 async function autosync(){if(!S.yd.token)return;if(Date.now()-S.lastSync>6*3600*1000){try{await ydSaveSilent()}catch(e){}}}
 async function ydSaveSilent(){const t=S.yd.token;const r=await fetch("https://cloud-api.yandex.net/v1/disk/resources/upload?path="+encodeURIComponent(ydPath())+"&overwrite=true",{headers:{Authorization:"OAuth "+t}});const j=await r.json();if(!j.href)return;const u=await fetch(j.href,{method:"PUT",body:JSON.stringify(S)});if(u.ok){S.lastSync=Date.now();save();render()}}
 function wipe(){if(confirm("Точно удалить ВСЕ данные?")){S.expenses=[];save();render()}}
 
 if(location.hash.includes("access_token")){const m=location.hash.match(/access_token=([^&]+)/);if(m){S.yd=S.yd||{};S.yd.token=m[1];save();history.replaceState(null,"",location.pathname);alert("Токен получен!")}}
+
+// --- Запуск ---
+if(!S.income){document.getElementById("onb").classList.add("show")}
 render();autosync();checkNotifs();
 </script>
 </body>
