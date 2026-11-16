@@ -131,6 +131,14 @@ canvas#chart{width:100%;height:150px;display:block;margin-top:10px}
     <label>Доход в месяц, ₽</label><input type="number" id="inc-in" onchange="setIncome(this.value)">
   </div>
   <div class="card">
+    <h2>📁 Категории</h2>
+    <div class="muted">✏️ — переименовать. 🗑 — удалить: лимит распределяется между остальными пропорционально, траты переносятся в выбранную категорию.</div>
+    <div id="cats-admin"></div>
+    <label>Название новой категории</label><input id="nc-name" placeholder="Например: Спорт">
+    <div class="frow"><input id="nc-emoji" placeholder="Эмодзи (необяз.)"><input type="number" id="nc-limit" placeholder="Лимит, ₽/мес"></div>
+    <button class="btn" onclick="addCat()">Добавить категорию</button>
+  </div>
+  <div class="card">
     <h2>Тема</h2>
     <div class="seg" id="themeSeg">
       <button data-t="dark" onclick="setTheme('dark')">Тёмная</button>
@@ -175,20 +183,23 @@ canvas#chart{width:100%;height:150px;display:block;margin-top:10px}
 <script>
 const CATS=[["rent","Аренда + ЖКУ","🏠",43000],["food","Продукты","🛒",18000],["tr","Транспорт","🚌",6500],["sub","Связь и подписки","📱",2000],["byt","Быт и покупки","🧺",7000],["fun","Кафе и развлечения","🍕",17000],["child","Ребёнок","🧸",10000],["med","Медицина","💊",6000],["other","Прочее","📦",5000]];
 const BASE_INCOME=170000, BASE_GOAL=55500;
-const QUICK=["food","fun","tr","byt"];
+const QUICK_IDS=["food","fun","tr","byt"];
 const MAP=[["пят,магнит,вкусвилл,лента,дикси,азбук,продукт,перемена,fix","food"],["аптек,клиник,мед,инвитро","med"],["такси,метро,мцд,мцк,ж-д,автобус,билет,транспорт","tr"],["озон,вайлд,wildberries,алиэкспресс,леруа,строй,золот,чипдип,market","byt"],["дет,кораблик,гортензия,мамино,агуша,нэн,бутик,фабрика пес","child"],["кофе,додо,мак,бургер,ресторан,кафе,кино,пекарня,иволга,столовая,папа","fun"],["жкх,коммунал,мособл,энергосбыт,газ,роствелеком,интернет,мтс,билайн,теле2,мегафон,домру","rent"],["связ,подпис,zen,music,steam,yandex,яндекс плюс","sub"]];
 let S=Object.assign({expenses:[],income:0,goal:0,theme:"dark",yd:{},lastSync:0,rem:{on:false,time:"20:00",last:""},pays:[],payNotif:{date:"",ids:[]}},JSON.parse(localStorage.getItem("budget")||"{}"));
 if(!S.rem)S.rem={on:false,time:"20:00",last:""};
 if(!S.pays)S.pays=[];
 if(!S.payNotif)S.payNotif={date:"",ids:[]};
+function defaultCats(inc){const r=inc/BASE_INCOME;return CATS.map(c=>({id:c[0],name:c[1],emoji:c[2],limit:Math.round(c[3]*r/100)*100}))}
+if(!S.cats||!S.cats.length)S.cats=defaultCats(S.income||BASE_INCOME);
 let V=new Date();let quickCat=null;
 const fmt=n=>Number(n||0).toLocaleString("ru-RU",{maximumFractionDigits:0});
 const mKey=(y,m)=>y+"-"+String(m+1).padStart(2,"0");
 const MON=["январь","февраль","март","апрель","май","июнь","июль","август","сентябрь","октябрь","ноябрь","декабрь"];
 function save(){localStorage.setItem("budget",JSON.stringify(S))}
-function catName(id){const c=CATS.find(c=>c[0]===id);return c?c[1]:"—"}
-function catEmoji(id){const c=CATS.find(c=>c[0]===id);return c?c[2]:"•"}
-function scale(v){const inc=S.income||BASE_INCOME;return Math.round(v/BASE_INCOME*inc/100)*100}
+function catOf(id){return S.cats.find(c=>c.id===id)}
+function catName(id){const c=catOf(id);return c?c.name:"—"}
+function catEmoji(id){const c=catOf(id);return c?c.emoji:"•"}
+function fixCat(id){return catOf(id)?id:(catOf("other")?"other":(S.cats[0]?S.cats[0].id:"other"))}
 function shift(d){V=new Date(V.getFullYear(),V.getMonth()+d,1);
  const fd=new Date(V.getFullYear(),V.getMonth(),1),ld=new Date(V.getFullYear(),V.getMonth()+1,0);
  document.getElementById("q-from").value=fd.toISOString().slice(0,10);
@@ -199,25 +210,30 @@ function tab(id,btn){document.querySelectorAll("section").forEach(s=>s.classList
 function applyTheme(){const d=S.theme==="dark"||(S.theme==="auto"&&matchMedia("(prefers-color-scheme: dark)").matches);document.body.classList.toggle("dark",d);document.querySelectorAll("#themeSeg button").forEach(b=>b.classList.toggle("on",b.dataset.t===S.theme))}
 function setTheme(t){S.theme=t;save();render()}
 function setIncome(v){v=+v;if(!v||v<10000)return alert("Введите доход не меньше 10 000 ₽");
- S.income=v;S.goal=scale(BASE_GOAL);save();render();autosync()}
+ const old=S.income||BASE_INCOME,f=v/old;
+ S.cats.forEach(c=>c.limit=Math.round(c.limit*f/100)*100);
+ S.income=v;S.goal=Math.round(BASE_GOAL/old*v/100)*100;save();render();autosync()}
 function startApp(){const v=+document.getElementById("onb-income").value;
  if(!v||v<10000)return alert("Введите доход не меньше 10 000 ₽");
- S.income=v;S.goal=scale(BASE_GOAL);save();
+ if(!S.income)S.cats=defaultCats(v);
+ S.income=v;S.goal=Math.round(BASE_GOAL/BASE_INCOME*v/100)*100;save();
  document.getElementById("onb").classList.remove("show");render()}
 function render(){
  document.getElementById("mtitle").textContent=MON[V.getMonth()]+" "+V.getFullYear();
  const me=meOf();const sav=me.filter(e=>e.cat==="savings").reduce((a,e)=>a+e.sum,0);
  document.getElementById("sav").innerHTML=fmt(sav)+" <small>/ "+fmt(S.goal)+" ₽</small>";
  const p=S.goal?Math.min(100,sav/S.goal*100):0;document.getElementById("savbar").style.width=p+"%";
- document.getElementById("chips").innerHTML=QUICK.map(id=>{const c=CATS.find(x=>x[0]===id);return `<button class="chip ${quickCat===id?"sel":""}" onclick="quickSel('${id}')">${c[2]} ${c[1]}</button>`}).join("");
- document.getElementById("f-cat").innerHTML=CATS.map(c=>`<option value="${c[0]}">${c[2]} ${c[1]}</option>`).join("");
+ const quick=QUICK_IDS.map(id=>catOf(id)).filter(Boolean);
+ const quickList=quick.length?quick:S.cats.slice(0,4);
+ document.getElementById("chips").innerHTML=quickList.map(c=>`<button class="chip ${quickCat===c.id?"sel":""}" onclick="quickSel('${c.id}')">${c.emoji} ${c.name}</button>`).join("");
+ document.getElementById("f-cat").innerHTML=S.cats.map(c=>`<option value="${c.id}">${c.emoji} ${c.name}</option>`).join("");
  if(!document.getElementById("f-date").value)document.getElementById("f-date").value=new Date().toISOString().slice(0,10);
  const spend={};me.filter(e=>e.cat!=="savings").forEach(e=>spend[e.cat]=(spend[e.cat]||0)+e.sum);
  document.getElementById("inc-label").textContent=fmt(S.income)+" ₽";
- document.getElementById("limits").innerHTML=CATS.map(c=>{
-  const lim=scale(c[3]),s=spend[c[0]]||0,pc=Math.min(100,s/lim*100);
-  return `<div class="row"><span>${c[2]} ${c[1]}</span><span style="color:${s>lim?"var(--red)":"var(--muted)"}">${fmt(s)} / ${fmt(lim)} ₽</span></div><div class="bar"><div class="${s>lim?"over":""}" style="width:${pc}%"></div></div>`}).join("");
- renderStats();
+ document.getElementById("limits").innerHTML=S.cats.map(c=>{
+  const s=spend[c.id]||0,lim=c.limit||0,pc=lim>0?Math.min(100,s/lim*100):0;
+  return `<div class="row"><span>${c.emoji} ${c.name}</span><span style="color:${lim>0&&s>lim?"var(--red)":"var(--muted)"}">${fmt(s)} / ${fmt(lim)} ₽</span></div><div class="bar"><div class="${lim>0&&s>lim?"over":""}" style="width:${pc}%"></div></div>`}).join("");
+ renderStats();renderCatsAdmin();
  document.getElementById("inc-in").value=S.income||"";
  document.getElementById("yd-id").value=S.yd.id||"";
  document.getElementById("yd-token").value=S.yd.token||"";
@@ -228,6 +244,36 @@ function render(){
  document.getElementById("pays").innerHTML=S.pays.length?S.pays.map(p=>`<div class="li"><div><div>📌 ${p.name}</div><div class="muted">${p.day}-е число месяца</div></div><div><span class="s">${fmt(p.sum)} ₽</span><button class="del" onclick="delPay(${p.id})">✕</button></div></div>`).join(""):'<div class="muted">Пока пусто</div>';
  applyTheme();
 }
+function renderCatsAdmin(){
+ document.getElementById("cats-admin").innerHTML=S.cats.map((c,i)=>`<div class="li"><div><div>${c.emoji} ${c.name}</div><div class="muted">лимит ${fmt(c.limit)} ₽/мес</div></div><div><button class="del" style="color:var(--accent)" onclick="renameCat(${i})">✏️</button><button class="del" onclick="delCat(${i})">🗑</button></div></div>`).join("");
+}
+function renameCat(i){const c=S.cats[i];if(!c)return;
+ const n=prompt("Новое название:",c.name);if(n===null)return;if(n.trim())c.name=n.trim();
+ const em=prompt("Эмодзи:",c.emoji);if(em!==null&&em.trim())c.emoji=em.trim();
+ const lim=prompt("Лимит, ₽/мес:",c.limit);if(lim!==null&&lim!=="")c.limit=+lim||c.limit;
+ save();render();autosync()}
+function delCat(i){
+ const c=S.cats[i];if(!c)return;
+ if(S.cats.length<=1)return alert("Нельзя удалить последнюю категорию");
+ const rest=S.cats.filter((_,j)=>j!==i);
+ const list=rest.map((r,k)=>(k+1)+". "+r.emoji+" "+r.name).join("\n");
+ const a=prompt("Куда перенести траты из «"+c.name+"»?\n"+list+"\nВведите номер (пусто — «Прочее», если она есть):","");
+ const fallback=rest.find(r=>r.id==="other")||rest[0];
+ const target=a&&rest[+a-1]?rest[+a-1].id:fallback.id;
+ const sumRest=rest.reduce((x,r)=>x+r.limit,0);
+ if(sumRest>0)rest.forEach(r=>r.limit=Math.round(r.limit+r.limit/sumRest*c.limit/100)*100);
+ else rest.forEach(r=>r.limit=Math.round(c.limit/rest.length/100)*100);
+ let moved=0;S.expenses.forEach(e=>{if(e.cat===c.id){e.cat=target;moved++}});
+ S.cats=rest;save();render();autosync();
+ alert("Категория удалена.\nЛимит "+fmt(c.limit)+" ₽ распределён между остальными пропорционально.\nПеренесено трат: "+moved);
+}
+function addCat(){
+ const n=document.getElementById("nc-name").value.trim();if(!n)return alert("Введите название категории");
+ const em=document.getElementById("nc-emoji").value.trim()||"📦";
+ const lim=Math.round((+document.getElementById("nc-limit").value||0)/100)*100;
+ S.cats.push({id:"c"+Date.now(),name:n,emoji:em,limit:lim});
+ ["nc-name","nc-emoji","nc-limit"].forEach(i=>document.getElementById(i).value="");
+ save();render();autosync()}
 function renderStats(){
  const me=meOf();
  const q=(document.getElementById("q").value||"").toLowerCase();
@@ -270,19 +316,19 @@ function delExp(id){if(!confirm("Удалить эту трату?"))return;S.ex
 function addSav(){const s=prompt("Сколько отложить, ₽?");if(!s)return;S.expenses.push({id:Date.now(),date:new Date().toISOString().slice(0,10),cat:"savings",sum:+s,note:"перевод"});save();render();autosync()}
 function editExp(id){const e=S.expenses.find(x=>x.id===id);if(!e)return;
  const a=prompt("Новая сумма (пусто — не менять):",e.sum);if(a===null)return;if(a!=="")e.sum=+a;
- const c=prompt("Категория:\n"+CATS.map((c,i)=>(i+1)+". "+c[2]+" "+c[1]).join("\n")+"\nНомер или пусто — не менять:");if(c){const n=CATS[+c-1];if(n)e.cat=n[0]}
+ const c=prompt("Категория:\n"+S.cats.map((c,i)=>(i+1)+". "+c.emoji+" "+c.name).join("\n")+"\nНомер или пусто — не менять:");if(c){const n=S.cats[+c-1];if(n)e.cat=n[0]&&n.id||n.id;if(n)e.cat=n.id}
  save();render();autosync()}
 
 // --- Экспорт CSV ---
 function expCSV(){
  const rows=[["Дата","Категория","Сумма","Комментарий"]];
- S.expenses.slice().sort((a,b)=>a.date.localeCompare(b.date)).forEach(e=>rows.push([e.date,catName(e.cat),e.sum,(e.note||"").replace(/;/g,",")]));
+ S.expenses.slice().sort((a,b)=>a.date.localeCompare(b.date)).forEach(e=>rows.push([e.date,e.cat==="savings"?"Накопления":catName(e.cat),e.sum,(e.note||"").replace(/;/g,",")]));
  const csv="\ufeff"+rows.map(r=>r.join(";")).join("\n");
  const b=new Blob([csv],{type:"text/csv;charset=utf-8"});const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="budget_export.csv";a.click()}
 
 // --- Резервная копия ---
 function dl(){const b=new Blob([JSON.stringify(S)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="budget_backup.json";a.click()}
-document.getElementById("bakfile").addEventListener("change",ev=>{const f=ev.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{S=Object.assign(JSON.parse(r.result),{yd:S.yd});if(!S.income)S.income=0;if(!S.goal)S.goal=scale(BASE_GOAL);save();render();alert("Восстановлено!")}catch(e){alert("Файл не распознан")}};r.readAsText(f)});
+document.getElementById("bakfile").addEventListener("change",ev=>{const f=ev.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{S=Object.assign(JSON.parse(r.result),{yd:S.yd});if(!S.income)S.income=0;if(!S.goal)S.goal=Math.round(BASE_GOAL/BASE_INCOME*S.income/100)*100;if(!S.cats||!S.cats.length)S.cats=defaultCats(S.income||BASE_INCOME);save();render();alert("Восстановлено!")}catch(e){alert("Файл не распознан")}};r.readAsText(f)});
 
 // --- Импорт выписки Сбера ---
 function parseCSV(t){const L=t.split(/\r?\n/);const h=(L[0]||"").toLowerCase();const sep=(h.split(";").length>h.split(",").length)?";":",";let di=0,ni=2,ai=-1;let rows=L;
@@ -292,7 +338,7 @@ function parseCSV(t){const L=t.split(/\r?\n/);const h=(L[0]||"").toLowerCase();c
   let s=c[ai>=0?ai:c.length-1]||"";s=parseFloat(String(s).replace(/\s|\u00a0/g,"").replace(",","."));if(isNaN(s)||s>=0)continue;
   const name=(c[ni]||"").toLowerCase();let cat="other";
   for(const [kw,ct] of MAP){if(kw.split(",").some(k=>name.includes(k))){cat=ct;break}}
-  out.push({date:ds.split(" ")[0],cat,sum:Math.abs(s),note:(c[ni]||"").trim().slice(0,60)})}
+  out.push({date:ds.split(" ")[0],cat:fixCat(cat),sum:Math.abs(s),note:(c[ni]||"").trim().slice(0,60)})}
  return out}
 document.getElementById("csvfile").addEventListener("change",ev=>{const f=ev.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{const ops=parseCSV(r.result);
  if(!ops.length){document.getElementById("csvres").textContent="Не нашёл трат в файле. Проверьте формат выгрузки."}
@@ -348,7 +394,7 @@ async function ydSave(){const t=S.yd.token;if(!t)return alert("Сначала п
 async function ydLoad(){const t=S.yd.token;if(!t)return alert("Сначала получите токен");
  try{const r=await fetch("https://cloud-api.yandex.net/v1/disk/resources/download?path="+encodeURIComponent(ydPath()),{headers:{Authorization:"OAuth "+t}});
  const j=await r.json();if(!j.href)return alert("Ошибка Диска: "+(j.description||r.status));
- const f=await fetch(j.href);S=Object.assign(await f.json(),{yd:S.yd});if(!S.income)S.income=0;if(!S.goal)S.goal=scale(BASE_GOAL);save();render();alert("Восстановлено с Диска!")}
+ const f=await fetch(j.href);S=Object.assign(await f.json(),{yd:S.yd});if(!S.income)S.income=0;if(!S.cats||!S.cats.length)S.cats=defaultCats(S.income||BASE_INCOME);save();render();alert("Восстановлено с Диска!")}
  catch(e){alert("Нет связи с Диском: "+e.message)}}
 async function autosync(){if(!S.yd.token)return;if(Date.now()-S.lastSync>6*3600*1000){try{await ydSaveSilent()}catch(e){}}}
 async function ydSaveSilent(){const t=S.yd.token;const r=await fetch("https://cloud-api.yandex.net/v1/disk/resources/upload?path="+encodeURIComponent(ydPath())+"&overwrite=true",{headers:{Authorization:"OAuth "+t}});const j=await r.json();if(!j.href)return;const u=await fetch(j.href,{method:"PUT",body:JSON.stringify(S)});if(u.ok){S.lastSync=Date.now();save();render()}}
