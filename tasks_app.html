@@ -199,13 +199,20 @@ async function enablePush(){
  if(!S.sync.url)return alert("Сначала настройте сервер выше");
  try{
   const perm=await Notification.requestPermission();
-  if(perm!=="granted")return alert("Разрешение на уведомления не выдано");
-  const reg=await navigator.serviceWorker.register("sw.js");
+  if(perm!=="granted")return alert("Разрешение не выдано. Проверьте: Настройки → Уведомления — есть ли там приложение «Дела»");
+  alert("Шаг 1 из 4: разрешение есть");
+  let reg;
+  try{reg=await navigator.serviceWorker.register("sw.js")}catch(e1){return alert("Шаг 2: регистрация worker не удалась: "+e1.message)}
   await navigator.serviceWorker.ready;
-  const sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:PUBLIC_KEY});
+  await new Promise(r=>setTimeout(r,800));
+  alert("Шаг 2 из 4: worker активен");
+  let sub;
+  try{sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:PUBLIC_KEY})}
+  catch(e2){return alert("Шаг 3: подписка не удалась: "+e2.name+" — "+e2.message)}
+  alert("Шаг 3 из 4: подписка получена");
   const r=await fetch(S.sync.url+"/subscribe",{method:"POST",headers:{"Content-Type":"application/json","X-Key":S.sync.key},body:JSON.stringify(sub)});
-  if(!r.ok)return alert("Сервер не принял подписку — проверьте ключ доступа");
-  S.pushOn=true;save();renderPushStatus();alert("Пуши включены — теперь напоминания будут приходить обоим, даже с закрытым приложением 🙂")
+  if(!r.ok)return alert("Шаг 4: сервер не принял подписку, код "+r.status);
+  S.pushOn=true;save();renderPushStatus();alert("Готово — пуши включены 🎉")
  }catch(e){alert("Не получилось: "+e.message)}}
 function notify(t,b){if("Notification" in window&&Notification.permission==="granted"){try{new Notification(t,{body:b})}catch(e){}}}
 function notifyCheck(){
