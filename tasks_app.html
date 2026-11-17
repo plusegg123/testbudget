@@ -190,7 +190,7 @@ async function pull(){
  }catch(e){return false}}
 async function push(msg){
  if(!S.sync.url)return;
- try{await fetch(S.sync.url+"/tasks?key="+encodeURIComponent(S.sync.key),{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({tasks:S.tasks,msg:msg||"Список дел обновился"})});S.lastSync=Date.now();save()}catch(e){}}
+ try{await fetch(S.sync.url+"/tasks?key="+encodeURIComponent(S.sync.key),{method:"PUT",body:JSON.stringify({tasks:S.tasks,msg:msg||"Список дел обновился"})});S.lastSync=Date.now();save()}catch(e){}}
 function renderPushStatus(){
  const el=document.getElementById("push-status");if(!el)return;
  el.textContent=("PushManager" in window)?(S.pushOn?"Пуши включены":"Пуши выключены"):"Пуши не поддерживаются — откройте приложение через иконку на главном экране"}
@@ -210,8 +210,14 @@ async function enablePush(){
   try{sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:PUBLIC_KEY})}
   catch(e2){return alert("Шаг 3: подписка не удалась: "+e2.name+" — "+e2.message)}
   alert("Шаг 3 из 4: подписка получена");
-  const r=await fetch(S.sync.url+"/subscribe",{method:"POST",headers:{"Content-Type":"application/json","X-Key":S.sync.key},body:JSON.stringify(sub)});
-  if(!r.ok)return alert("Шаг 4: сервер не принял подписку, код "+r.status);
+  const u=S.sync.url+"/subscribe?key="+encodeURIComponent(S.sync.key);
+  let r;
+  try{r=await fetch(u,{method:"POST",body:JSON.stringify(sub)})}
+  catch(e3){
+   try{await fetch(u,{method:"POST",mode:"no-cors",body:JSON.stringify(sub)});r={ok:true,status:0}}
+   catch(e4){return alert("Шаг 4: не удалось отправить подписку: "+e4.message)}
+  }
+  if(r&&!r.ok)return alert("Шаг 4: сервер не принял подписку, код "+r.status);
   S.pushOn=true;save();renderPushStatus();alert("Готово — пуши включены 🎉")
  }catch(e){alert("Не получилось: "+e.message)}}
 function notify(t,b){if("Notification" in window&&Notification.permission==="granted"){try{new Notification(t,{body:b})}catch(e){}}}
