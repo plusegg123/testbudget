@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Дела</title>
+<style>
+*{box-sizing:border-box;margin:0;-webkit-tap-highlight-color:transparent}
+:root{--bg:#eef1f7;--card:rgba(255,255,255,.72);--text:#15181e;--muted:#5d6575;--accent:#3b82f6;--green:#22c55e;--red:#ef4444;--amber:#f59e0b;--border:rgba(0,0,0,.06)}
+body.dark{--bg:#0b0e14;--card:rgba(255,255,255,.07);--text:#eef1f7;--muted:#8b93a5;--accent:#60a5fa;--border:rgba(255,255,255,.09)}
+body{font-family:-apple-system,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;max-width:640px;margin:0 auto;padding:0 0 90px;transition:background .3s,color .3s}
+body::before{content:'';position:fixed;inset:0;z-index:-1;background:radial-gradient(600px 400px at 15% -5%,rgba(59,130,246,.18),transparent),radial-gradient(500px 400px at 90% 10%,rgba(168,85,247,.12),transparent)}
+header{position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:space-between;padding:14px 18px 10px;background:var(--bg)}
+header b{font-size:20px}
+.card{background:var(--card);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-radius:22px;padding:16px;border:1px solid var(--border);box-shadow:0 8px 30px rgba(0,0,0,.08);margin:0 14px 14px}
+h2{font-size:17px;margin-bottom:10px}
+.muted{color:var(--muted);font-size:13px}
+.btn{display:block;width:100%;background:var(--accent);color:#fff;border:0;border-radius:16px;padding:13px;font-size:15px;font-weight:600;margin-top:12px}
+.btn.ghost{background:transparent;color:var(--text);border:1px solid var(--border)}
+input,select{width:100%;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:11px 12px;font-size:15px;color:var(--text);margin-top:8px;-webkit-appearance:none;appearance:none}
+.frow{display:flex;gap:8px}.frow>*{flex:1;margin-top:8px}
+label{font-size:13px;color:var(--muted);display:block;margin-top:10px}
+.li{display:flex;align-items:flex-start;gap:10px;padding:12px 0;border-bottom:1px solid var(--border)}
+.li:last-child{border:0}
+.chk{width:26px;height:26px;min-width:26px;border:2px solid var(--border);border-radius:9px;background:none;cursor:pointer;font-size:14px;line-height:1;color:var(--green)}
+.chk.done{background:var(--green);border-color:var(--green);color:#fff}
+.li .t{flex:1;min-width:0}
+.li .name{font-size:15px;font-weight:600}
+.li.done .name{text-decoration:line-through;color:var(--muted);font-weight:400}
+.li .meta{font-size:13px;color:var(--muted);margin-top:2px}
+.li .meta.urgent{color:var(--red);font-weight:600}
+.li .meta.soon{color:var(--amber);font-weight:600}
+.badge{display:inline-block;border-radius:8px;padding:1px 8px;font-size:11px;margin-left:6px;vertical-align:middle}
+.badge.who{background:rgba(59,130,246,.15);color:var(--accent)}
+.li .del{background:none;border:0;color:var(--red);font-size:15px;padding:4px 6px}
+.tl{display:flex;gap:6px;overflow-x:auto;padding:2px 0}
+.tl button{white-space:nowrap;border:1px solid var(--border);background:transparent;color:var(--muted);border-radius:14px;padding:8px 14px;font-size:14px}
+.tl button.on{background:var(--accent);color:#fff;border-color:transparent}
+.plaska{border-radius:14px;padding:10px 12px;font-size:13px;margin-bottom:10px;line-height:1.4}
+.plaska.warn{background:rgba(239,68,68,.15);color:var(--red)}
+</style>
+</head>
+<body>
+
+<header><b>✅ Дела</b><span class="muted" id="dateToday"></span></header>
+
+<section id="t-list">
+  <div id="urgentbox" style="margin:0 14px 14px"></div>
+  <div class="card">
+    <div class="tl" id="filter"></div>
+    <div id="list" style="margin-top:8px"></div>
+  </div>
+</section>
+
+<section id="t-add">
+  <div class="card">
+    <h2>Новое дело</h2>
+    <label>Что нужно сделать</label><input id="a-name" placeholder="Например: забрать посылку">
+    <div class="frow">
+      <div><label>Дата</label><input type="date" id="a-date"></div>
+      <div><label>Время</label><input type="time" id="a-time"></div>
+    </div>
+    <label>Напомнить заранее</label>
+    <select id="a-before">
+      <option value="15">за 15 минут</option>
+      <option value="30" selected>за 30 минут</option>
+      <option value="60">за 1 час</option>
+      <option value="120">за 2 часа</option>
+      <option value="1440">за сутки</option>
+    </select>
+    <label>Заметка (необязательно)</label><input id="a-note" placeholder="адрес, детали…">
+    <label>Кто делает</label>
+    <select id="a-who"><option value="она">Она</option><option value="он">Он</option><option value="оба">Вместе</option></select>
+    <button class="btn" onclick="addTask()">Добавить дело</button>
+  </div>
+</section>
+
+<section id="t-sync">
+  <div class="card">
+    <h2>☁️ Сервер</h2>
+    <div class="muted">Оба вставьте одинаковые адрес и ключ — и списки совпадут.</div>
+    <label>Адрес воркера</label><input id="w-url" placeholder="https://tasks-api.…workers.dev">
+    <label>Ключ доступа</label><input id="w-key">
+    <button class="btn" onclick="saveSync()">Сохранить и синхронизировать</button>
+    <div class="muted" id="syncstatus" style="margin-top:8px"></div>
+  </div>
+  <div class="card">
+    <h2>🔔 Push-уведомления</h2>
+    <button class="btn" onclick="enablePush()">Включить пуши на этом телефоне</button>
+    <div class="muted" id="push-status" style="margin-top:8px"></div>
+    <div class="muted" style="margin-top:6px">Требуется iOS 16.4+ и приложение, добавленное на главный экран. Пуш разбудит приложение, и оно заберёт свежий список с сервера. Для звука в системном календаре есть кнопка 📅 у каждого дела.</div>
+  </div>
+  <div class="card">
+    <h2>Разное</h2>
+    <div class="frow"><button class="btn ghost" onclick="setTheme(S.theme==='dark'?'light':'dark')">Сменить тему</button><button class="btn ghost" onclick="expICS()">📅 Все дела в Календарь</button></div>
+  </div>
+</section>
+
+<nav style="position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--card);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border-top:1px solid var(--border);padding:8px 4px calc(8px + env(safe-area-inset-bottom));z-index:60">
+  <button class="on" onclick="tab('list',this)" style="flex:1;background:none;border:0;color:var(--muted);font-size:11px;padding:6px 0">📋 Дела</button>
+  <button onclick="tab('add',this)" style="flex:1;background:none;border:0;color:var(--muted);font-size:11px;padding:6px 0">➕ Добавить</button>
+  <button onclick="tab('sync',this)" style="flex:1;background:none;border:0;color:var(--muted);font-size:11px;padding:6px 0">⚙️ Настройки</button>
+</nav>
+
+<script>
+const PUBLIC_KEY = "BNKjHRMeHuMFVdCZb-vHOTrMWRDDe1M97P611yzgkmgo9EZLLPPGxel3N4pMuGfi_WSkl_Gqxm9Yxcei1juivqI";
+let S=Object.assign({tasks:[],theme:"dark",sync:{url:"",key:""},lastSync:0,pushOn:false,notified:{}},JSON.parse(localStorage.getItem("tasks_app")||"{}"));
+if(!S.sync)S.sync={url:"",key:""};
+function save(){localStorage.setItem("tasks_app",JSON.stringify(S))}
+const fmt=n=>Number(n||0).toLocaleString("ru-RU");
+const MON=["янв","фев","мар","апр","мая","июн","июл","авг","сен","окт","ноя","дек"];
+const WD=["вс","пн","вт","ср","чт","пт","сб"];
+const todayStr=()=>new Date().toISOString().slice(0,10);
+function tab(id,btn){document.querySelectorAll("section").forEach(s=>s.classList.remove("on"));document.getElementById("t-"+id).classList.add("on");document.querySelectorAll("nav button").forEach(b=>b.classList.remove("on"));btn.classList.add("on")}
+function applyTheme(){document.body.classList.toggle("dark",S.theme==="dark")}
+function setTheme(t){S.theme=t;save();applyTheme()}
+function dt(t){return t.date+"T"+(t.time||"09:00")}
+function mins(t){return Math.round((new Date(dt(t))-new Date())/60000)}
+function render(){
+ document.getElementById("dateToday").textContent=WD[new Date().getDay()]+", "+new Date().getDate()+" "+MON[new Date().getMonth()];
+ applyTheme();
+ document.getElementById("w-url").value=S.sync.url||"";
+ document.getElementById("w-key").value=S.sync.key||"";
+ document.getElementById("syncstatus").textContent=S.sync.url?("Подключено. Последняя синхронизация: "+(S.lastSync?new Date(S.lastSync).toLocaleString("ru-RU"):"ещё не было")):"Сервер не настроен";
+ renderPushStatus();
+ const open=S.tasks.filter(t=>!t.done);
+ const over=open.filter(t=>mins(t)<0);
+ const soon=open.filter(t=>mins(t)>=0&&mins(t)<=60);
+ let ub="";
+ if(over.length)ub+=`<div class="plaska warn">⚠ Просрочено: ${over.length} — «${over[0].name.replace(/</g,"&lt;")}»${over.length>1?" и ещё "+(over.length-1):""}</div>`;
+ else if(soon.length)ub+=`<div class="plaska warn">⏰ Ближайшее: «${soon[0].name.replace(/</g,"&lt;")}» — через ${mins(soon[0])} мин</div>`;
+ document.getElementById("urgentbox").innerHTML=ub;
+ const fl=S.filter||"open";
+ const opts=[["open","Активные"],["today","Сегодня"],["soon","7 дней"],["done","Готово"],["all","Все"]];
+ document.getElementById("filter").innerHTML=opts.map(o=>`<button class="${fl===o[0]?"on":""}" onclick="S.filter='${o[0]}';save();render()">${o[1]}</button>`).join("");
+ let list=S.tasks.slice();
+ const tn=todayStr();
+ if(fl==="open")list=list.filter(t=>!t.done);
+ if(fl==="today")list=list.filter(t=>t.date===tn);
+ if(fl==="soon")list=list.filter(t=>t.date>=tn&&t.date<=new Date(Date.now()+7*86400000).toISOString().slice(0,10));
+ if(fl==="done")list=list.filter(t=>t.done);
+ list.sort((a,b)=>(a.done===b.done)?dt(a).localeCompare(dt(b)):(a.done?1:-1));
+ document.getElementById("list").innerHTML=list.length?list.map(t=>{
+  const d=new Date(dt(t));let meta;
+  if(t.done)meta="✓ выполнено";
+  else{const m=mins(t);
+   if(m<0)meta='<span class="urgent">просрочено на '+(fmt(-m/60)>=1?Math.round(-m/60*10)/10+" ч":-m+" мин")+'</span>';
+   else if(m<60)meta='<span class="soon">через '+m+' мин</span>';
+   else if(m<1440)meta='<span class="soon">через '+Math.round(m/60*10)/10+' ч</span>';
+   else meta=d.getDate()+" "+MON[d.getMonth()]+", "+(t.time||"")}
+  const who=t.who==="оба"?" вместе":(t.who==="он"?" он":" она");
+  return `<div class="li ${t.done?"done":""}"><button class="chk ${t.done?"done":""}" onclick="tog(${t.id})">${t.done?"✓":""}</button><div class="t"><div class="name">${t.name.replace(/</g,"&lt;")}<span class="badge who">${who}</span></div><div class="meta">${meta}${t.note?" · "+t.note.replace(/</g,"&lt;"):""}</div></div><button class="del" title="В календарь" onclick="icsOne(${t.id})">📅</button><button class="del" onclick="delTask(${t.id})">✕</button></div>`}).join(""):'<div class="muted" style="padding:8px 0">Пусто. Добавьте первое дело ➕</div>';
+}
+function tog(id){const t=S.tasks.find(x=>x.id===id);if(!t)return;
+ t.done=!t.done;t.updated=Date.now();save();render();
+ push(t.done?("✅ Выполнено: «"+t.name+"»"):("↩ Вернули в работу: «"+t.name+"»"))}
+function tname(id){const t=S.tasks.find(x=>x.id===id);return t?t.name:""}
+function delTask(id){if(!confirm("Удалить дело?"))return;
+ const nm=tname(id);S.tasks=S.tasks.filter(t=>t.id!==id);save();render();
+ push("🗑 Удалено дело: «"+nm+"»")}
+function addTask(){const n=document.getElementById("a-name").value.trim();if(!n)return alert("Введите название дела");
+ S.tasks.push({id:Date.now(),name:n,date:document.getElementById("a-date").value||todayStr(),time:document.getElementById("a-time").value||"09:00",before:+document.getElementById("a-before").value||30,note:document.getElementById("a-note").value.trim(),who:document.getElementById("a-who").value,done:false,updated:Date.now()});
+ document.getElementById("a-name").value="";document.getElementById("a-note").value="";
+ save();render();
+ const whoL={она:" (она)",он:" (он)",оба:" (вместе)"}[document.getElementById("a-who").value]||"";
+ push("📌 Новое дело: «"+n+"» — "+(document.getElementById("a-date").value||todayStr())+" "+(document.getElementById("a-time").value||"09:00")+whoL);
+ tab('list',document.querySelectorAll('nav button')[0]);notifyCheck()}
+async function saveSync(){
+ S.sync.url=document.getElementById("w-url").value.trim().replace(/\/+$/,"");
+ S.sync.key=document.getElementById("w-key").value.trim();
+ save();
+ const ok=await pull();
+ if(ok)alert("Синхронизировано — список общий");
+ else alert("Не удалось связаться с сервером — проверьте адрес и ключ")}
+async function pull(){
+ if(!S.sync.url)return false;
+ try{
+  const r=await fetch(S.sync.url+"/tasks?key="+encodeURIComponent(S.sync.key));
+  if(!r.ok)return false;
+  const remote=await r.json();
+  if(remote&&remote.tasks){
+   const map={};S.tasks.forEach(x=>map[x.id]=x);
+   remote.tasks.forEach(rt=>{const lo=map[rt.id];if(!lo||((rt.updated||0)>=(lo.updated||0)))map[rt.id]=rt});
+   S.tasks=Object.values(map);S.lastSync=Date.now();save();render()}
+  return true
+ }catch(e){return false}}
+async function push(msg){
+ if(!S.sync.url)return;
+ try{await fetch(S.sync.url+"/tasks?key="+encodeURIComponent(S.sync.key),{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({tasks:S.tasks,msg:msg||"Список дел обновился"})});S.lastSync=Date.now();save()}catch(e){}}
+function renderPushStatus(){
+ const el=document.getElementById("push-status");if(!el)return;
+ el.textContent=("PushManager" in window)?(S.pushOn?"Пуши включены":"Пуши выключены"):"Пуши не поддерживаются — откройте приложение через иконку на главном экране"}
+async function enablePush(){
+ if(!("serviceWorker" in navigator)||!("PushManager" in window))return alert("Пуши не поддерживаются. Откройте приложение как установленный PWA с главного экрана");
+ if(!S.sync.url)return alert("Сначала настройте сервер выше");
+ try{
+  const perm=await Notification.requestPermission();
+  if(perm!=="granted")return alert("Разрешение на уведомления не выдано");
+  const reg=await navigator.serviceWorker.register("sw.js");
+  await navigator.serviceWorker.ready;
+  const sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:PUBLIC_KEY});
+  const r=await fetch(S.sync.url+"/subscribe",{method:"POST",headers:{"Content-Type":"application/json","X-Key":S.sync.key},body:JSON.stringify(sub)});
+  if(!r.ok)return alert("Сервер не принял подписку — проверьте ключ доступа");
+  S.pushOn=true;save();renderPushStatus();alert("Пуши включены — теперь напоминания будут приходить обоим, даже с закрытым приложением 🙂")
+ }catch(e){alert("Не получилось: "+e.message)}}
+function notify(t,b){if("Notification" in window&&Notification.permission==="granted"){try{new Notification(t,{body:b})}catch(e){}}}
+function notifyCheck(){
+ const now=new Date(),day=now.toISOString().slice(0,10);
+ if(!S.notified[day])S.notified={};
+ S.tasks.forEach(t=>{
+  if(t.done)return;
+  const key=t.id+"_"+day+"_"+t.before;
+  if(S.notified[key])return;
+  const target=new Date(dt(t)).getTime()-t.before*60000;
+  if(now.getTime()>=target&&now.getTime()<=new Date(dt(t)).getTime()){
+   S.notified[key]=1;save();
+   notify("Дела: "+t.name,"Начало в "+(t.time||"09:00")+(t.note?" · "+t.note:""))}
+ });
+ if(Object.keys(S.notified).length>200)S.notified={};
+}
+setInterval(notifyCheck,30000);
+document.addEventListener("visibilitychange",()=>{if(!document.hidden){if(S.sync.url)pull();render();notifyCheck()}});
+function icsBody(tasks){
+ const F=d=>d.replace(/-/g,"").replace(/:/g,"")+"00";
+ let out="BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Dela//RU\r\n";
+ tasks.forEach(t=>{
+  const end=new Date(new Date(dt(t)).getTime()+30*60000).toISOString().slice(0,16).replace(/-/g,"").replace(/:/g,"")+"00";
+  out+="BEGIN:VEVENT\r\nUID:dela-"+t.id+"@tasks\r\nDTSTART:"+F(dt(t))+"\r\nDTEND:"+end+"\r\nSUMMARY:"+t.name.replace(/[;,\\]/g," ")+(t.who?" ("+t.who+")":"")+"\r\nDESCRIPTION:"+(t.note||"").replace(/[;,\\]/g," ")+"\r\nBEGIN:VALARM\r\nTRIGGER:-PT"+t.before+"M\r\nACTION:DISPLAY\r\nDESCRIPTION:Напоминание\r\nEND:VALARM\r\nEND:VEVENT\r\n"});
+ return out+"END:VCALENDAR\r\n"}
+function dlTxt(content,name){const b=new Blob([content],{type:"text/calendar;charset=utf-8"});const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=name;a.click()}
+function icsOne(id){const t=S.tasks.find(x=>x.id===id);if(t)dlTxt(icsBody([t]),"delo.ics")}
+function expICS(){const open=S.tasks.filter(t=>!t.done);if(!open.length)return alert("Нет активных дел");
+ dlTxt(icsBody(open),"deli.ics")}
+render();
+if(S.sync.url)pull();
+if(navigator.serviceWorker)navigator.serviceWorker.getRegistrations().then(r=>{if(!r.length&&!S.pushOn&&S.sync.url)navigator.serviceWorker.register("sw.js")});
+</script>
+</body>
+</html>
